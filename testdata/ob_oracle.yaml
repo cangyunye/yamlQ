@@ -1,0 +1,59 @@
+ob_emp_list:
+  view_name: "OB 员工列表"
+  description: "OceanBase Oracle 租户员工查询"
+  db_type: "ob-oracle"
+  dsn: "scott@oracle_tenant:password@tcp(192.168.1.100:2883)/test_db?charset=utf8mb4"
+  sql: |
+    SELECT empno, ename, job, sal, hiredate
+    FROM emp
+    WHERE ename LIKE '%' || {{keyword}} || '%'
+  params:
+    - name: keyword
+      prompt: "搜索关键词"
+      default: ""
+  view:
+    enable: true
+    theme: "sunset"
+    columns:
+      - field: empno
+        header: "员工号"
+        align: "center"
+      - field: ename
+        header: "姓名"
+      - field: job
+        header: "职位"
+      - field: sal
+        header: "薪资"
+        align: "right"
+        converter: money_format
+      - field: hiredate
+        header: "入职日期"
+        converter: datetime_to_cn
+
+ob_dept_summary:
+  view_name: "OB 部门汇总"
+  description: "OceanBase Oracle 租户分析查询"
+  db_type: "ob-oracle"
+  dsn: "scott@oracle_tenant:password@tcp(192.168.1.100:2883)/test_db?charset=utf8mb4"
+  sql: |
+    SELECT d.dname,
+           COUNT(e.empno) AS emp_count,
+           NVL(SUM(e.sal), 0) AS total_sal
+    FROM dept d
+    LEFT JOIN emp e ON e.deptno = d.deptno
+    GROUP BY d.dname
+    ORDER BY total_sal DESC
+  params: []
+  view:
+    enable: true
+    theme: "default"
+    columns:
+      - field: dname
+        header: "部门"
+      - field: emp_count
+        header: "人数"
+        align: "right"
+      - field: total_sal
+        header: "薪资总额"
+        align: "right"
+        converter: money_format
