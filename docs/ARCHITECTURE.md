@@ -18,24 +18,31 @@
 
 ## 2. 数据库驱动
 
-| db_type | Go 驱动 | 备注 |
-|---|---|---|
-| `mysql` | `go-sql-driver/mysql` | |
-| `ob-mysql` | `go-sql-driver/mysql` | OceanBase MySQL 租户，MySQL 协议 |
-| `ob-oracle` | `go-sql-driver/mysql` | OceanBase Oracle 租户，MySQL 协议，Oracle SQL 方言 |
-| `gd-mysql` | `go-sql-driver/mysql` | GoldenDB MySQL 模式，MySQL 协议 |
-| `gd-oracle` | `go-sql-driver/mysql` | GoldenDB Oracle 模式，MySQL 协议，Oracle SQL 方言 |
-| `postgres` | `jackc/pgx/v5/stdlib` | |
-| `oracle` | `sijms/go-ora/v2` | 纯 Go，免 Instant Client |
-| `opengauss` | `jackc/pgx/v5/stdlib` | PG 协议兼容 |
-| `sqlite` | `mattn/go-sqlite3` | 本地文件数据库 |
-| `clickhouse` | `clickhouse-go/v2` | 列式分析数据库 |
-| `sqlserver` | `denisenkom/go-mssqldb` | Microsoft SQL Server |
+| db_type | Go 驱动 | 构建标签 | 备注 |
+|---|---|---|---|---|
+| `mysql` | `go-sql-driver/mysql` | 默认 | |
+| `postgres` | `jackc/pgx/v5/stdlib` | 默认 | |
+| `oracle` | `sijms/go-ora/v2` | 默认 | 纯 Go，免 Instant Client |
+| `opengauss` | `jackc/pgx/v5/stdlib` | 默认 | PG 协议兼容 |
+| `ob-mysql` | `go-sql-driver/mysql` | `all` | OceanBase MySQL 租户 |
+| `ob-oracle` | `go-sql-driver/mysql` | `all` | OceanBase Oracle 租户，Oracle SQL 方言 |
+| `gd-mysql` | `go-sql-driver/mysql` | `all` | GoldenDB MySQL 模式 |
+| `gd-oracle` | `go-sql-driver/mysql` | `all` | GoldenDB Oracle 模式，Oracle SQL 方言 |
+| `sqlite` | `mattn/go-sqlite3` | `all` | 本地文件数据库 |
+| `clickhouse` | `clickhouse-go/v2` | `all` | 列式分析数据库 |
+| `sqlserver` | `denisenkom/go-mssqldb` | `all` | Microsoft SQL Server |
 
 > **OB Oracle DSN 说明：**
 > - 非集群 OBProxy / 直连: `user@tenant:password@tcp(host:port)/db`
 > - 集群 OBProxy: `user@tenant#cluster:password@tcp(host:port)/db`
 > - `go-sql-driver/mysql` 按最后一个 `@` 分割，用户名内的 `@` 和 `#` 均属合法字符
+
+默认编译仅包含 `mysql`、`postgres`、`opengauss`、`oracle` 四种基础驱动。完整驱动（OB、GoldenDB、SQLite、ClickHouse、SQL Server）及 `serve` 子命令需使用 `-tags all` 编译：
+
+```bash
+make build-all              # 完整构建
+cd db-gateway && go build -tags all -o db-gateway .   # 或直接 go build
+```
 
 扩展无原生 Go 驱动的库（达梦、Kingbase）：参考 GoNavi driver-agent 模式，通过子进程桥接，主进程 HTTP 接口不变。
 
@@ -220,7 +227,7 @@ YAMLQ_GATEWAY_DAEMON=1
 |---|---|---|
 | 默认（一次性） | `yamlq config.yaml` | Python 拉起 gateway，退出时关停 |
 | 常驻（daemon） | `YAMLQ_GATEWAY_DAEMON=1 yamlq config.yaml` | Python 拉起 gateway 并常驻，退出不影响 gateway |
-| 独立启动 | `./db-gateway serve --port 9999 --auth-token x` | serve 子命令，自带 /docs 调测页面 |
+| 独立启动 | `./db-gateway serve --port 9999 --auth-token x` | serve 子命令，自带 /docs 调测页面（需 `-tags all` 编译） |
 | 直接复用 | `YAMLQ_GATEWAY_URL=http://127.0.0.1:54321 yamlq config.yaml` | 跳过发现，直连指定 gateway |
 
 ## 7. 术语表

@@ -7,11 +7,13 @@
 
 ## Build & test
 ```bash
-make build          # cd db-gateway && go build -o db-gateway . && uv pip install -e ".[dev,tui]"
-make test           # test-go + test-python
-make test-go        # go test ./... -timeout 60s (from db-gateway/)
-make test-python    # .venv/bin/python -m pytest tests/ -v --timeout=120 (from cli/)
-make clean          # rm binary + __pycache__
+make build            # default: mysql + postgres + opengauss + oracle only
+make build-all        # all drivers + serve subcommand (-tags all)
+make test             # test-go + test-python (default build)
+make test-go          # go test ./... -timeout 60s (default build)
+make test-go-all      # go test -tags all ./... -timeout 60s (all drivers)
+make test-python      # .venv/bin/python -m pytest tests/ -v --timeout=120 (from cli/)
+make clean            # rm binary + __pycache__
 ```
 
 ## Quirks & gotchas

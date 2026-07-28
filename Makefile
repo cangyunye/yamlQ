@@ -1,12 +1,20 @@
-.PHONY: build build-go install-python test test-go test-python clean
+.PHONY: build build-all build-go build-go-all install-python test test-go test-python clean
 
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "0.1.0")
 COMMIT  := $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
 
 build: build-go install-python
 
+build-all: build-go-all install-python
+
 build-go:
 	cd db-gateway && CGO_ENABLED=0 go build \
+		-ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT)" \
+		-o db-gateway .
+
+build-go-all:
+	cd db-gateway && CGO_ENABLED=0 go build \
+		-tags all \
 		-ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT)" \
 		-o db-gateway .
 
@@ -18,6 +26,9 @@ test: test-go test-python
 
 test-go:
 	cd db-gateway && go test ./... -timeout 60s
+
+test-go-all:
+	cd db-gateway && go test -tags all ./... -timeout 60s
 
 test-python:
 	cd cli && .venv/bin/python -m pytest tests/ -v --timeout=120

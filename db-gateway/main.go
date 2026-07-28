@@ -19,24 +19,18 @@ import (
 )
 
 var (
-	version = "dev"
-	commit  = "none"
+	version    = "dev"
+	commit     = "none"
+	serveEntry func()
 )
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "serve" {
-		serveCmd := flag.NewFlagSet("serve", flag.ExitOnError)
-		port := serveCmd.Int("port", 0, "listen port (default: random)")
-		authToken := serveCmd.String("auth-token", "", "optional auth token for API access")
-		showVersion := serveCmd.Bool("version", false, "print version and exit")
-		serveCmd.Parse(os.Args[2:])
-
-		if *showVersion {
-			fmt.Printf("yamlq/db-gateway %s (commit %s)\n", version, commit)
-			os.Exit(0)
+		if serveEntry == nil {
+			fmt.Println("serve subcommand not available (build with -tags all)")
+			os.Exit(1)
 		}
-
-		runServe(*port, *authToken)
+		serveEntry()
 		return
 	}
 
@@ -66,17 +60,6 @@ func main() {
 	}
 
 	run(mgr, srv, *portFlag, *authToken, *daemonMode)
-}
-
-func runServe(port int, authToken string) {
-	cfg := config.Service
-	mgr := conn.NewManager(cfg)
-	srv := server.New(mgr)
-	srv.SetServeMode(true)
-	if authToken != "" {
-		srv.SetAuthToken(authToken)
-	}
-	run(mgr, srv, port, authToken, true)
 }
 
 func run(mgr *conn.Manager, srv *server.Server, port int, authToken string, writeEnv bool) {
