@@ -20,9 +20,11 @@
 
 | db_type | Go 驱动 | 备注 |
 |---|---|---|
-| `mysql` | `go-sql-driver/mysql` | 兼容 GoldenDB-MySQL |
+| `mysql` | `go-sql-driver/mysql` | |
 | `ob-mysql` | `go-sql-driver/mysql` | OceanBase MySQL 租户，MySQL 协议 |
 | `ob-oracle` | `go-sql-driver/mysql` | OceanBase Oracle 租户，MySQL 协议，Oracle SQL 方言 |
+| `gd-mysql` | `go-sql-driver/mysql` | GoldenDB MySQL 模式，MySQL 协议 |
+| `gd-oracle` | `go-sql-driver/mysql` | GoldenDB Oracle 模式，MySQL 协议，Oracle SQL 方言 |
 | `postgres` | `jackc/pgx/v5/stdlib` | |
 | `oracle` | `sijms/go-ora/v2` | 纯 Go，免 Instant Client |
 | `opengauss` | `jackc/pgx/v5/stdlib` | PG 协议兼容 |
