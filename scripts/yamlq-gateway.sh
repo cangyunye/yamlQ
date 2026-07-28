@@ -50,6 +50,8 @@ is_running() {
 }
 
 cmd_start() {
+    cd "$YAMLQ_DIR"
+
     if is_running; then
         echo "gateway already running (PID $(get_pid))"
         exit 0
@@ -59,13 +61,13 @@ cmd_start() {
     [ -n "$AUTH_TOKEN" ] && args+=("--auth-token" "$AUTH_TOKEN")
     [ -n "$PORT" ] && args+=("--port" "$PORT")
 
-    nohup "$GATEWAY_BIN" "${args[@]}" > /dev/null 2>&1 &
+    nohup "$GATEWAY_BIN" "${args[@]}" > "$YAMLQ_DIR/gateway.log" 2>&1 &
     pid=$!
-    echo "$pid" > "$PID_FILE"
 
     # wait for env file to appear
     for i in $(seq 1 10); do
         if [ -f "$ENV_FILE" ]; then
+            echo "$pid" > "$PID_FILE"
             echo "gateway started (PID $pid)"
             cat "$ENV_FILE"
             exit 0
@@ -73,11 +75,13 @@ cmd_start() {
         sleep 0.3
     done
 
+    echo "$pid" > "$PID_FILE"
     echo "warning: gateway started but env file not found yet" >&2
     echo "check logs: $YAMLQ_DIR/gateway.log" >&2
 }
 
 cmd_stop() {
+    cd "$YAMLQ_DIR"
     local pid=$(get_pid)
     if [ -z "$pid" ] || ! kill -0 "$pid" 2>/dev/null; then
         echo "gateway not running"
@@ -99,6 +103,7 @@ cmd_stop() {
 }
 
 cmd_status() {
+    cd "$YAMLQ_DIR"
     local pid=$(get_pid)
     if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
         echo "gateway: running (PID $pid)"

@@ -28,6 +28,7 @@ func main() {
 	mode := flag.String("mode", "cli", "run mode: cli or service")
 	authToken := flag.String("auth-token", "", "optional auth token for API access")
 	daemonMode := flag.Bool("daemon", false, "run as daemon (stay resident after client disconnects)")
+	portFlag := flag.Int("port", 0, "listen port (default: random)")
 	flag.Parse()
 
 	if *showVersion {
@@ -48,7 +49,8 @@ func main() {
 		srv.SetAuthToken(*authToken)
 	}
 
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	addr := fmt.Sprintf("127.0.0.1:%d", *portFlag)
+	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
