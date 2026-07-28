@@ -15,6 +15,8 @@ func TestSupported(t *testing.T) {
 		{name: "ob-mysql", input: "ob-mysql", want: true},
 		{name: "ob-oracle", input: "ob-oracle", want: true},
 		{name: "unsupported", input: "sqlite", want: false},
+		{name: "gd-mysql", input: "gd-mysql", want: true},
+		{name: "gd-oracle", input: "gd-oracle", want: true},
 		{name: "empty", input: "", want: false},
 	}
 	for _, tc := range cases {
@@ -35,6 +37,8 @@ func TestOpenReturnsDB(t *testing.T) {
 	}{
 		{name: "ob-mysql", driver: "ob-mysql", dsn: "root:pass@tcp(127.0.0.1:2883)/test"},
 		{name: "ob-oracle", driver: "ob-oracle", dsn: "user@tenant:pass@tcp(127.0.0.1:2883)/test"},
+		{name: "gd-mysql", driver: "gd-mysql", dsn: "root:pass@tcp(127.0.0.1:3306)/test"},
+		{name: "gd-oracle", driver: "gd-oracle", dsn: "root:pass@tcp(127.0.0.1:3306)/test"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
