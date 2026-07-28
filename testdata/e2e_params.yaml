@@ -1,0 +1,17 @@
+param_view:
+  view_name: "参数测试"
+  db_type: "mysql"
+  dsn: "root:root123456@tcp(127.0.0.1:3306)/default_db"
+  sql: "SELECT id, name FROM e2e_users WHERE id >= {{min_id}} AND name LIKE CONCAT('%', {{keyword}}, '%')"
+  params:
+    - name: min_id
+      prompt: "最小ID"
+    - name: keyword
+      prompt: "关键词"
+  view:
+    enable: true
+    columns:
+      - field: id
+        header: "ID"
+      - field: name
+        header: "姓名"

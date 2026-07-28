@@ -1,0 +1,41 @@
+mysql_users:
+  view_name: "MySQL用户"
+  db_type: "mysql"
+  dsn: "root:root123456@tcp(127.0.0.1:3306)/default_db"
+  sql: "SELECT id, name FROM e2e_users ORDER BY id"
+  params: []
+  view:
+    enable: true
+    columns:
+      - field: id
+        header: "ID"
+      - field: name
+        header: "姓名"
+
+pg_users:
+  view_name: "PG用户"
+  db_type: "postgres"
+  dsn: "postgres://postgres:postgres123@127.0.0.1:5432/postgres_db?sslmode=disable"
+  sql: "SELECT id, name FROM e2e_users ORDER BY id"
+  params: []
+  view:
+    enable: true
+    columns:
+      - field: id
+        header: "ID"
+      - field: name
+        header: "姓名"
+
+oracle_users:
+  view_name: "Oracle用户"
+  db_type: "oracle"
+  dsn: "oracle://appuser:App123!@127.0.0.1:1521/XEPDB1"
+  sql: "SELECT id, name FROM e2e_users ORDER BY id"
+  params: []
+  view:
+    enable: true
+    columns:
+      - field: id
+        header: "ID"
+      - field: name
+        header: "姓名"

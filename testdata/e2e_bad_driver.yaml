@@ -1,0 +1,8 @@
+bad_view:
+  view_name: "错误驱动"
+  db_type: "dameng"
+  dsn: "user:pass@host:5236/db"
+  sql: "SELECT 1"
+  params: []
+  view:
+    enable: true

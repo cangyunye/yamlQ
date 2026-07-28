@@ -1,0 +1,49 @@
+user_list:
+  view_name: "用户列表"
+  db_type: "mysql"
+  dsn: "root:root123456@tcp(127.0.0.1:3306)/default_db"
+  sql: "SELECT id, name, email FROM e2e_users ORDER BY id"
+  params: []
+  view:
+    enable: true
+    enable_paging: true
+    page_size: 2
+    theme: "ocean"
+    columns:
+      - field: id
+        header: "ID"
+        align: "center"
+        width: 6
+      - field: name
+        header: "姓名"
+        min_width: 8
+      - field: email
+        header: "邮箱"
+        style: dim
+        max_width: 25
+
+user_search:
+  view_name: "用户搜索"
+  db_type: "mysql"
+  dsn: "root:root123456@tcp(127.0.0.1:3306)/default_db"
+  sql: "SELECT id, name FROM e2e_users WHERE name LIKE CONCAT('%', {{keyword}}, '%')"
+  params:
+    - name: keyword
+      prompt: "搜索关键词"
+      default: "Ali"
+  view:
+    enable: true
+    columns:
+      - field: id
+        header: "ID"
+      - field: name
+        header: "姓名"
+
+disabled_view:
+  view_name: "禁用视图"
+  db_type: "mysql"
+  dsn: "root:root123456@tcp(127.0.0.1:3306)/default_db"
+  sql: "SELECT 1"
+  params: []
+  view:
+    enable: false

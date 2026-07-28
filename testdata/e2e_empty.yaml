@@ -1,0 +1,13 @@
+empty_view:
+  view_name: "空结果"
+  db_type: "mysql"
+  dsn: "root:root123456@tcp(127.0.0.1:3306)/default_db"
+  sql: "SELECT id, name FROM e2e_users WHERE 1=0"
+  params: []
+  view:
+    enable: true
+    columns:
+      - field: id
+        header: "ID"
+      - field: name
+        header: "姓名"

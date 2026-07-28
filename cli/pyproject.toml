@@ -1,0 +1,25 @@
+[project]
+name = "yamlq"
+version = "0.1.0"
+description = "Terminal multi-database query tool driven by YAML config"
+requires-python = ">=3.11"
+dependencies = [
+    "pyyaml>=6.0",
+    "requests>=2.31",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+tui = ["textual>=0.40"]
+dev = ["pytest>=8.0", "pytest-timeout>=2.0"]
+
+[project.scripts]
+yamlq = "yamlq.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+timeout = 120

@@ -1,0 +1,5 @@
+broken_view:
+  db_type: "mysql"
+  sql: "SELECT 1"
+  view:
+    enable: true

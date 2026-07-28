@@ -1,0 +1,48 @@
+order_list:
+  view_name: "订单列表"
+  db_type: "mysql"
+  dsn: "root:root123456@tcp(127.0.0.1:3306)/default_db"
+  sql: "SELECT order_no, status, amount, created_at, updated_at FROM e2e_orders ORDER BY id"
+  params: []
+  view:
+    enable: true
+    theme: "sunset"
+    columns:
+      - field: order_no
+        header: "订单号"
+        width: 10
+      - field: status
+        header: "状态"
+        converter: status_to_cn
+        width: 8
+      - field: amount
+        header: "金额"
+        converter: money_format
+        align: "right"
+        width: 12
+      - field: created_at
+        header: "创建时间"
+        converter: datetime_to_iso
+        width: 12
+      - field: updated_at
+        header: "更新时间"
+        converter: datetime_to_cn
+        min_width: 18
+
+order_summary:
+  view_name: "订单统计"
+  db_type: "mysql"
+  dsn: "root:root123456@tcp(127.0.0.1:3306)/default_db"
+  sql: "SELECT status, COUNT(*) AS cnt, SUM(amount) AS total FROM e2e_orders GROUP BY status"
+  params: []
+  view:
+    enable: true
+    columns:
+      - field: status
+        header: "状态"
+        converter: status_to_cn
+      - field: cnt
+        header: "数量"
+      - field: total
+        header: "总金额"
+        converter: money_format

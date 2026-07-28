@@ -1,0 +1,179 @@
+# yamlQ
+
+基于 YAML 配置的终端多数据库查询工具。支持 MySQL、PostgreSQL、Oracle，一条命令查多库、多视图并行、表格化展示。
+
+## 快速开始
+
+### 构建
+
+```bash
+make build          # 编译 Go 网关 + 安装 Python CLI
+```
+
+### 使用
+
+```bash
+# 查询单个视图
+yamlq -c config.yaml -v user_list
+
+# 查询所有启用的视图（并行）
+yamlq -c config.yaml
+
+# 加载目录下所有 YAML
+yamlq -c ./views/
+
+# 传参覆盖默认值
+yamlq -c config.yaml -v user_search --param keyword=Bob
+
+# 交互式 TUI（Tab 切换、翻页）
+yamlq -c config.yaml --tui
+
+# 校验配置（检查哪些参数缺少默认值）
+yamlq check -c config.yaml
+```
+
+#### 版本查看
+
+```bash
+yamlq --version
+# yamlq 0.1.0 (commit abc1234)
+```
+
+## CLI 参数
+
+| 参数 | 说明 |
+|---|---|
+| `-c` | YAML 文件或目录（目录递归加载 `.yaml/.yml`） |
+| `-v` | 过滤视图 key，逗号分隔 |
+| `--param` | `key=value` 覆盖参数默认值，可多次使用 |
+| `--tui` | 启动交互式 TUI 模式 |
+| `--timeout` | 单查询超时秒数（默认 30） |
+| `--session-timeout` | 会话总超时秒数（默认 120） |
+| `--mode` | 网关模式 `cli`（默认）或 `service` |
+| `--auth-token` | 网关鉴权 token |
+| `--verbose` | 详细日志 |
+
+## YAML 配置
+
+一个 YAML 文件包含多个视图，每个视图 = 一个数据源 + 一条 SQL：
+
+```yaml
+user_list:
+  view_name: "用户列表"           # Tab 标签名（缺省用 key）
+  description: "所有用户"         # 可选描述
+  db_type: "mysql"               # mysql | postgres | oracle | opengauss
+  dsn: "root:pass@tcp(127.0.0.1:3306)/mydb"
+  sql: |
+    SELECT id, name, status, created_at
+    FROM users
+    WHERE name LIKE CONCAT('%', {{keyword}}, '%')
+  params:
+    - name: keyword
+      prompt: "搜索关键词"
+      default: ""                # 有 default 则静默使用，无则交互提示
+  view:
+    enable: true                 # false 则跳过不查询
+    enable_paging: true          # TUI 模式下启用翻页
+    page_size: 20
+    theme: "ocean"               # default | ocean | sunset | forest | mono
+    columns:
+      - field: id
+        header: "ID"
+        align: "center"          # left | center | right
+        width: 6                 # 固定列宽
+      - field: name
+        header: "姓名"
+        min_width: 8             # 最小列宽
+      - field: status
+        header: "状态"
+        converter: status_to_cn  # 枚举英转中
+        max_width: 10            # 最大列宽（超出折叠/截断）
+      - field: created_at
+        header: "创建时间"
+        converter: datetime_to_iso
+        style: dim
+        overflow: fold
+```
+
+### 多数据源示例
+
+同一文件内声明多个视图，指向不同数据库，并行查询：
+
+```yaml
+mysql_report:
+  db_type: "mysql"
+  dsn: "root:pass@tcp(127.0.0.1:3306)/db1"
+  sql: "SELECT * FROM orders"
+  view: { enable: true }
+
+pg_report:
+  db_type: "postgres"
+  dsn: "postgres://user:pass@127.0.0.1:5432/db2?sslmode=disable"
+  sql: "SELECT * FROM analytics"
+  view: { enable: true }
+
+oracle_report:
+  db_type: "oracle"
+  dsn: "oracle://user:pass@127.0.0.1:1521/XEPDB1"
+  sql: "SELECT * FROM legacy_data"
+  view: { enable: true }
+```
+
+### SQL 参数
+
+- 使用 `{{param_name}}` 声明占位符，运行时替换为 `?` 参数化查询
+- **不要**将 `{{param}}` 放在引号内（如 `'%{{x}}%'`），应使用数据库函数：
+  - MySQL: `LIKE CONCAT('%', {{x}}, '%')`
+  - PG: `LIKE '%' || {{x}} || '%'`
+
+### 内置主题
+
+| 名称 | 表头 | 边框 | 斑马纹 |
+|---|---|---|---|
+| `default` | 青色加粗 | 蓝色 | 有 |
+| `ocean` | 白字深蓝底 | 青色 | 有 |
+| `sunset` | 黑字黄底 | 红色 | 有 |
+| `forest` | 白字深绿底 | 绿色 | 有 |
+| `mono` | 白色加粗 | 白色 | 无 |
+
+### 内置 Converter
+
+| 名称 | 功能 | 示例 |
+|---|---|---|
+| `datetime_to_iso` | 日期 → `2024-03-15` | `2024-03-15 08:30:00` → `2024-03-15` |
+| `datetime_to_cn` | 日期 → 中文格式 | → `2024年03月15日 08:30` |
+| `status_to_cn` | 枚举英转中 | `pending` → `待支付` |
+| `money_format` | 金额千分位 | `1280.00` → `¥1,280.00` |
+
+未注册的 converter 名称会输出警告并原样显示。
+
+### DSN 格式
+
+| db_type | DSN 格式 |
+|---|---|
+| `mysql` | `user:pass@tcp(host:3306)/db` |
+| `postgres` | `postgres://user:pass@host:5432/db?sslmode=disable` |
+| `oracle` | `oracle://user:pass@host:1521/service` |
+| `opengauss` | `postgres://user:pass@host:5433/db?sslmode=disable` |
+
+## 项目结构
+
+```
+yamlq/
+├── db-gateway/       # Go HTTP 数据库网关
+├── cli/              # Python CLI + TUI
+├── testdata/         # E2E 测试 YAML
+├── docs/             # 架构设计、ADR、测试计划
+└── Makefile
+```
+
+## 开发
+
+```bash
+make test             # 运行全部测试（Go + Python E2E）
+make test-go          # 仅 Go 测试
+make test-python      # 仅 Python E2E 测试
+make build            # 编译
+```
+
+详细架构设计见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。

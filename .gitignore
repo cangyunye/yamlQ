@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+cli/yamlq/_commit.py
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.tox/
+coverage/
+htmlcov/
+.coverage*
+.pdm-python
+.pixi/
+.ptpython/
+
+# Go
+db-gateway/db-gateway
+*.exe
+*.test
+*.out
+vendor/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Environment
+.env
+.env.*
