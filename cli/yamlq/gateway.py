@@ -8,7 +8,6 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from urllib.parse import urlparse
 
 import requests
 
@@ -70,6 +69,11 @@ class Gateway:
     def start(self) -> None:
         existing = _find_existing_gateway()
         if existing:
+            if self._auth_token and self._auth_token != existing["auth"]:
+                raise GatewayError(
+                    f"auth token mismatch: CLI has {self._auth_token!r}, "
+                    f"but existing gateway expects {existing['auth']!r}"
+                )
             self._base_url = existing["url"]
             self._auth_token = existing["auth"]
             self._owned = False

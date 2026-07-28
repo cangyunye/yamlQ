@@ -7,8 +7,7 @@ from unittest import mock
 
 import requests
 import pytest
-
-from yamlq.gateway import Gateway, _find_existing_gateway, _load_gateway_env
+from yamlq.gateway import Gateway, GatewayError, _find_existing_gateway, _load_gateway_env
 
 
 class TestLoadGatewayEnv:
@@ -94,6 +93,13 @@ class TestGatewayStart:
             assert gw._owned is False
             assert gw._proc is None
             mock_get.assert_called_once_with("http://127.0.0.1:5555/ping", timeout=2)
+
+    def test_raises_on_auth_token_mismatch(self):
+        gw = Gateway(auth_token="cli_token")
+        with mock.patch("yamlq.gateway._find_existing_gateway") as mock_find:
+            mock_find.return_value = {"url": "http://127.0.0.1:5555", "auth": "other_token"}
+            with pytest.raises(GatewayError, match="auth token mismatch"):
+                gw.start()
 
     def test_falls_through_when_existing_gateway_stale(self):
         gw = Gateway()
