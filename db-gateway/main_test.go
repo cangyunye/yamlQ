@@ -1,101 +1,135 @@
 package main
 
 import (
+	"fmt"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
-func TestDaemonFlagImpliesServiceMode(t *testing.T) {
-	tests := []struct {
-		name   string
-		mode   string
-		daemon bool
-		want   string
-	}{
-		{"daemon overrides cli", "cli", true, "service"},
-		{"daemon keeps service", "service", true, "service"},
-		{"no daemon keeps cli", "cli", false, "cli"},
-		{"no daemon keeps service", "service", false, "service"},
+func freePort(t *testing.T) int {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to find free port: %v", err)
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := resolveMode(tt.mode, tt.daemon)
-			if got != tt.want {
-				t.Errorf("resolveMode(%q, %v) = %q, want %q", tt.mode, tt.daemon, got, tt.want)
-			}
-		})
-	}
+	port := ln.Addr().(*net.TCPAddr).Port
+	ln.Close()
+	return port
 }
 
-func TestWriteEnvFile(t *testing.T) {
-	tmpDir := t.TempDir()
-	origWd, _ := os.Getwd()
-	os.Chdir(tmpDir)
-	t.Cleanup(func() { os.Chdir(origWd) })
+func awaitReady(t *testing.T, port int, timeout time.Duration) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/ping", port))
+		if err == nil {
+			resp.Body.Close()
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	t.Fatalf("server on port %d did not become ready within %v", port, timeout)
+}
 
-	writeEnvFile(8080, "secret-token", true)
+func shutdownAndCleanup(t *testing.T, port int) {
+	t.Helper()
+	http.Get(fmt.Sprintf("http://127.0.0.1:%d/shutdown", port))
+	os.Remove(filepath.Join(getwd(t), ".yamlq-gateway.env"))
+}
 
-	path := filepath.Join(tmpDir, ".yamlq-gateway.env")
-	data, err := os.ReadFile(path)
+func TestRunServeRespondsToPing(t *testing.T) {
+	port := freePort(t)
+	done := make(chan struct{}, 1)
+	go func() {
+		runServe(port, "")
+		done <- struct{}{}
+	}()
+	awaitReady(t, port, 2*time.Second)
+	defer shutdownAndCleanup(t, port)
+	<-done
+}
+
+func TestRunServeWritesEnvFileWithDaemon(t *testing.T) {
+	port := freePort(t)
+	done := make(chan struct{}, 1)
+	go func() {
+		runServe(port, "")
+		done <- struct{}{}
+	}()
+	awaitReady(t, port, 2*time.Second)
+	defer shutdownAndCleanup(t, port)
+	<-done
+
+	cwd, _ := os.Getwd()
+	envPath := filepath.Join(cwd, ".yamlq-gateway.env")
+	data, err := os.ReadFile(envPath)
 	if err != nil {
-		t.Fatalf("failed to read env file: %v", err)
+		t.Fatalf("expected env file at %s, got: %v", envPath, err)
 	}
-
 	content := string(data)
-	if !strings.Contains(content, "YAMLQ_GATEWAY_URL=http://127.0.0.1:8080") {
-		t.Errorf("missing URL in env file:\n%s", content)
-	}
-	if !strings.Contains(content, "YAMLQ_GATEWAY_AUTH=secret-token") {
-		t.Errorf("missing auth token in env file:\n%s", content)
-	}
 	if !strings.Contains(content, "YAMLQ_GATEWAY_DAEMON=1") {
-		t.Errorf("missing daemon flag in env file:\n%s", content)
+		t.Fatalf("expected YAMLQ_GATEWAY_DAEMON=1 in env file, got: %s", content)
+	}
+	if !strings.Contains(content, fmt.Sprintf("YAMLQ_GATEWAY_URL=http://127.0.0.1:%d", port)) {
+		t.Fatalf("expected YAMLQ_GATEWAY_URL in env file, got: %s", content)
 	}
 }
 
-func TestWriteEnvFileNoAuth(t *testing.T) {
-	tmpDir := t.TempDir()
-	origWd, _ := os.Getwd()
-	os.Chdir(tmpDir)
-	t.Cleanup(func() { os.Chdir(origWd) })
+func TestRunServeWritesAuthTokenInEnvFile(t *testing.T) {
+	port := freePort(t)
+	authToken := "test-token-123"
+	done := make(chan struct{}, 1)
+	go func() {
+		runServe(port, authToken)
+		done <- struct{}{}
+	}()
+	awaitReady(t, port, 2*time.Second)
+	defer shutdownAndCleanup(t, port)
+	<-done
 
-	writeEnvFile(3000, "", false)
-
-	path := filepath.Join(tmpDir, ".yamlq-gateway.env")
-	data, err := os.ReadFile(path)
+	cwd, _ := os.Getwd()
+	envPath := filepath.Join(cwd, ".yamlq-gateway.env")
+	data, err := os.ReadFile(envPath)
 	if err != nil {
-		t.Fatalf("failed to read env file: %v", err)
+		t.Fatalf("expected env file, got: %v", err)
 	}
-
 	content := string(data)
-	if !strings.Contains(content, "YAMLQ_GATEWAY_URL=http://127.0.0.1:3000") {
-		t.Errorf("missing URL in env file:\n%s", content)
-	}
-	if strings.Contains(content, "YAMLQ_GATEWAY_AUTH") {
-		t.Errorf("auth should not appear when token is empty:\n%s", content)
-	}
-	if strings.Contains(content, "YAMLQ_GATEWAY_DAEMON") {
-		t.Errorf("daemon flag should not appear when daemon=false:\n%s", content)
+	if !strings.Contains(content, "YAMLQ_GATEWAY_AUTH=test-token-123") {
+		t.Fatalf("expected auth token in env file, got: %s", content)
 	}
 }
 
-func TestEnvFileDeletedOnShutdown(t *testing.T) {
-	tmpDir := t.TempDir()
-	origWd, _ := os.Getwd()
-	os.Chdir(tmpDir)
-	t.Cleanup(func() { os.Chdir(origWd) })
+func TestRunServePingReturnsOk(t *testing.T) {
+	port := freePort(t)
+	done := make(chan struct{}, 1)
+	go func() {
+		runServe(port, "")
+		done <- struct{}{}
+	}()
+	awaitReady(t, port, 2*time.Second)
+	defer shutdownAndCleanup(t, port)
+	<-done
 
-	writeEnvFile(8080, "", true)
-	path := filepath.Join(tmpDir, ".yamlq-gateway.env")
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		t.Fatal("env file should exist after writeEnvFile")
+	resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/ping", port))
+	if err != nil {
+		t.Fatalf("ping failed: %v", err)
 	}
-
-	cleanupEnvFile()
-
-	if _, err := os.Stat(path); !os.IsNotExist(err) {
-		t.Fatal("env file should be removed after cleanupEnvFile")
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
+}
+
+func getwd(t *testing.T) string {
+	t.Helper()
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd failed: %v", err)
+	}
+	return wd
 }

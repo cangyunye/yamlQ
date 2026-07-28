@@ -13,7 +13,12 @@ import (
 type Server struct {
 	mgr          *conn.Manager
 	authToken    string
+	serveMode    bool
 	shutdownFunc func()
+}
+
+func (s *Server) SetServeMode(v bool) {
+	s.serveMode = v
 }
 
 func New(mgr *conn.Manager) *Server {
