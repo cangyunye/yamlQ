@@ -92,12 +92,15 @@ class Gateway:
 
     def _spawn_gateway(self) -> None:
         binary = _find_binary()
-        cmd = [binary, f"--mode={self._mode}"]
-        if self._auth_token:
-            cmd.append(f"--auth-token={self._auth_token}")
         if os.environ.get("YAMLQ_GATEWAY_DAEMON") == "1":
-            cmd.append("--daemon")
+            cmd = [binary, "serve"]
+            if self._auth_token:
+                cmd.append(f"--auth-token={self._auth_token}")
             self._owned = False
+        else:
+            cmd = [binary, f"--mode={self._mode}"]
+            if self._auth_token:
+                cmd.append(f"--auth-token={self._auth_token}")
 
         self._proc = subprocess.Popen(
             cmd,

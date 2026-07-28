@@ -160,7 +160,7 @@ class TestGatewayStop:
 
 
 class TestDaemonMode:
-    def test_spawns_with_daemon_flag(self, monkeypatch):
+    def test_spawns_with_serve_subcommand(self, monkeypatch):
         monkeypatch.setenv("YAMLQ_GATEWAY_DAEMON", "1")
         gw = Gateway()
         with (
@@ -176,10 +176,12 @@ class TestDaemonMode:
             gw.start()
 
             cmd = mock_popen.call_args[0][0]
-            assert "--daemon" in cmd
+            assert cmd[0] == "/fake/db-gateway"
+            assert cmd[1] == "serve"
+            assert "--mode" not in " ".join(cmd)
             assert gw._owned is False
 
-    def test_daemon_flag_not_present_by_default(self, monkeypatch):
+    def test_mode_flag_used_by_default(self, monkeypatch):
         monkeypatch.delenv("YAMLQ_GATEWAY_DAEMON", raising=False)
         gw = Gateway()
         with (
@@ -195,5 +197,7 @@ class TestDaemonMode:
             gw.start()
 
             cmd = mock_popen.call_args[0][0]
-            assert "--daemon" not in cmd
+            assert cmd[0] == "/fake/db-gateway"
+            assert cmd[1] == "--mode=cli"
+            assert "serve" not in " ".join(cmd)
             assert gw._owned is True
