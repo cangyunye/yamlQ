@@ -63,3 +63,39 @@ func TestWrapPaginationOBOracle(t *testing.T) {
 		t.Fatalf("got %q, want %q", got, want)
 	}
 }
+
+func TestWrapPaginationSQLite(t *testing.T) {
+	sql := "SELECT * FROM users ORDER BY id"
+	got := WrapPagination("sqlite", sql, 2, 20)
+	want := "SELECT * FROM users ORDER BY id LIMIT 20 OFFSET 20"
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+func TestWrapPaginationClickHouse(t *testing.T) {
+	sql := "SELECT * FROM events ORDER BY ts"
+	got := WrapPagination("clickhouse", sql, 3, 50)
+	want := "SELECT * FROM events ORDER BY ts LIMIT 50 OFFSET 100"
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+func TestWrapPaginationSQLServer(t *testing.T) {
+	sql := "SELECT * FROM users ORDER BY id"
+	got := WrapPagination("sqlserver", sql, 2, 20)
+	want := "SELECT * FROM users ORDER BY id OFFSET 20 ROWS FETCH NEXT 20 ROWS ONLY"
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+func TestWrapPaginationSQLServerFirstPage(t *testing.T) {
+	sql := "SELECT * FROM users ORDER BY id"
+	got := WrapPagination("sqlserver", sql, 1, 10)
+	want := "SELECT * FROM users ORDER BY id OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY"
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}

@@ -7,6 +7,9 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "github.com/sijms/go-ora/v2"
+	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/ClickHouse/clickhouse-go/v2"
+	_ "github.com/denisenkom/go-mssqldb"
 )
 
 type OpenFunc func(dsn string) (*sql.DB, error)
@@ -35,6 +38,15 @@ var registry = map[string]OpenFunc{
 	},
 	"gd-oracle": func(dsn string) (*sql.DB, error) {
 		return sql.Open("mysql", dsn)
+	},
+	"sqlite": func(dsn string) (*sql.DB, error) {
+		return sql.Open("sqlite3", dsn)
+	},
+	"clickhouse": func(dsn string) (*sql.DB, error) {
+		return sql.Open("clickhouse", dsn)
+	},
+	"sqlserver": func(dsn string) (*sql.DB, error) {
+		return sql.Open("sqlserver", dsn)
 	},
 }
 
