@@ -8,9 +8,9 @@ func WrapPagination(driver, sql string, page, pageSize int) string {
 	}
 	offset := (page - 1) * pageSize
 	switch driver {
-	case "mysql", "opengauss", "postgres":
+	case "mysql", "opengauss", "postgres", "ob-mysql":
 		return fmt.Sprintf("%s LIMIT %d OFFSET %d", sql, pageSize, offset)
-	case "oracle":
+	case "oracle", "ob-oracle":
 		return fmt.Sprintf("%s OFFSET %d ROWS FETCH NEXT %d ROWS ONLY", sql, offset, pageSize)
 	default:
 		return fmt.Sprintf("%s LIMIT %d OFFSET %d", sql, pageSize, offset)
