@@ -1,0 +1,58 @@
+gd_user_list:
+  view_name: "GoldenDB 用户列表"
+  description: "GoldenDB MySQL 模式用户查询"
+  db_type: "gd-mysql"
+  dsn: "root:password@tcp(192.168.1.100:3306)/test_db?charset=utf8mb4"
+  sql: |
+    SELECT user_id, user_name, status, created_at
+    FROM t_user
+    WHERE user_name LIKE CONCAT('%', {{keyword}}, '%')
+  params:
+    - name: keyword
+      prompt: "搜索关键词"
+      default: ""
+  view:
+    enable: true
+    theme: "ocean"
+    columns:
+      - field: user_id
+        header: "用户ID"
+        align: "center"
+      - field: user_name
+        header: "用户名"
+        min_width: 10
+      - field: status
+        header: "状态"
+        converter: status_to_cn
+      - field: created_at
+        header: "创建时间"
+        converter: datetime_to_iso
+
+gd_order_stats:
+  view_name: "GoldenDB 订单统计"
+  description: "GoldenDB MySQL 模式聚合查询"
+  db_type: "gd-mysql"
+  dsn: "root:password@tcp(192.168.1.100:3306)/test_db?charset=utf8mb4"
+  sql: |
+    SELECT DATE(create_time) AS dt, COUNT(*) AS cnt, SUM(amount) AS total
+    FROM t_order
+    WHERE create_time >= {{start_date}}
+    GROUP BY DATE(create_time)
+    ORDER BY dt DESC
+  params:
+    - name: start_date
+      prompt: "起始日期 (YYYY-MM-DD)"
+      default: "2026-01-01"
+  view:
+    enable: true
+    theme: "forest"
+    columns:
+      - field: dt
+        header: "日期"
+      - field: cnt
+        header: "订单数"
+        align: "right"
+      - field: total
+        header: "总金额"
+        align: "right"
+        converter: money_format
