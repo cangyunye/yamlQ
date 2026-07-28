@@ -8,12 +8,39 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from urllib.parse import urlparse
 
 import requests
 
 
 class GatewayError(Exception):
     pass
+
+
+GATEWAY_ENV_FILE = ".yamlq-gateway.env"
+
+
+def _load_gateway_env() -> dict[str, str]:
+    env_file = Path.cwd() / GATEWAY_ENV_FILE
+    if not env_file.exists():
+        return {}
+    result = {}
+    for line in env_file.read_text().strip().splitlines():
+        if "=" in line:
+            k, v = line.split("=", 1)
+            result[k] = v
+    return result
+
+
+def _find_existing_gateway() -> dict | None:
+    url = os.environ.get("YAMLQ_GATEWAY_URL")
+    if url:
+        auth = os.environ.get("YAMLQ_GATEWAY_AUTH", "")
+        return {"url": url, "auth": auth}
+    env = _load_gateway_env()
+    if "YAMLQ_GATEWAY_URL" in env:
+        return {"url": env["YAMLQ_GATEWAY_URL"], "auth": env.get("YAMLQ_GATEWAY_AUTH", "")}
+    return None
 
 
 def _find_binary() -> str:
@@ -35,15 +62,38 @@ class Gateway:
         self._verbose = verbose
         self._proc: subprocess.Popen | None = None
         self._base_url = ""
+        self._owned = True
         self._session = requests.Session()
         if auth_token:
             self._session.headers["X-Auth-Token"] = auth_token
 
     def start(self) -> None:
+        existing = _find_existing_gateway()
+        if existing:
+            self._base_url = existing["url"]
+            self._auth_token = existing["auth"]
+            self._owned = False
+            self._proc = None
+            if existing["auth"]:
+                self._session.headers["X-Auth-Token"] = existing["auth"]
+            try:
+                resp = self._session.get(f"{self._base_url}/ping", timeout=2)
+                resp.raise_for_status()
+                return
+            except requests.RequestException:
+                pass
+
+        self._owned = True
+        self._spawn_gateway()
+
+    def _spawn_gateway(self) -> None:
         binary = _find_binary()
         cmd = [binary, f"--mode={self._mode}"]
         if self._auth_token:
             cmd.append(f"--auth-token={self._auth_token}")
+        if os.environ.get("YAMLQ_GATEWAY_DAEMON") == "1":
+            cmd.append("--daemon")
+            self._owned = False
 
         self._proc = subprocess.Popen(
             cmd,
@@ -64,7 +114,7 @@ class Gateway:
             print(f"[gateway] started on port {port}, pid={self._proc.pid}", file=sys.stderr)
 
     def stop(self) -> None:
-        if self._proc is None:
+        if not self._owned or self._proc is None:
             return
         try:
             self._session.post(f"{self._base_url}/shutdown", timeout=3)
