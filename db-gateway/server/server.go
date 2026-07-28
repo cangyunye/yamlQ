@@ -1,6 +1,7 @@
 package server
 
 import (
+	"embed"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -9,6 +10,9 @@ import (
 	"yamlq/db-gateway/conn"
 	"yamlq/db-gateway/errs"
 )
+
+//go:embed openapi.json swagger.html
+var staticFiles embed.FS
 
 type Server struct {
 	mgr          *conn.Manager
@@ -40,6 +44,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /close", s.handleClose)
 	mux.HandleFunc("GET /ping", s.handlePing)
 	mux.HandleFunc("POST /shutdown", s.handleShutdown)
+	if s.serveMode {
+		mux.HandleFunc("GET /openapi.json", s.handleOpenAPI)
+		mux.HandleFunc("GET /docs", s.handleDocs)
+	}
 	if s.authToken != "" {
 		return s.authMiddleware(mux)
 	}
@@ -147,6 +155,18 @@ func (s *Server) handleShutdown(w http.ResponseWriter, r *http.Request) {
 	if s.shutdownFunc != nil {
 		go s.shutdownFunc()
 	}
+}
+
+func (s *Server) handleOpenAPI(w http.ResponseWriter, r *http.Request) {
+	data, _ := staticFiles.ReadFile("openapi.json")
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(data)
+}
+
+func (s *Server) handleDocs(w http.ResponseWriter, r *http.Request) {
+	data, _ := staticFiles.ReadFile("swagger.html")
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write(data)
 }
 
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {

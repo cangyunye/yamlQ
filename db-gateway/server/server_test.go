@@ -3,8 +3,10 @@ package server
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -256,6 +258,58 @@ func connectMySQL(t *testing.T, ts *httptest.Server) string {
 	json.NewDecoder(resp.Body).Decode(&cr)
 	resp.Body.Close()
 	return cr["conn_id"].(string)
+}
+
+func TestServeModeServesOpenAPI(t *testing.T) {
+	srv := New(nil)
+	srv.SetServeMode(true)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/openapi.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+	var spec map[string]interface{}
+	json.NewDecoder(resp.Body).Decode(&spec)
+	if spec["openapi"] != "3.0.3" {
+		t.Fatalf("expected openapi 3.0.3, got %v", spec["openapi"])
+	}
+}
+
+func TestServeModeServesDocs(t *testing.T) {
+	srv := New(nil)
+	srv.SetServeMode(true)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	resp, err := http.Get(ts.URL + "/docs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if !strings.Contains(string(body), "swagger-ui") {
+		t.Fatal("expected swagger-ui in response")
+	}
+}
+
+func TestNonServeModeNoDocs(t *testing.T) {
+	srv := New(nil)
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+
+	resp, _ := http.Get(ts.URL + "/docs")
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected 404 without serve mode, got %d", resp.StatusCode)
+	}
 }
 
 func doPost(t *testing.T, url string, body interface{}) *http.Response {

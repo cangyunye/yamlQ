@@ -1,0 +1,133 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "yamlQ Gateway API",
+    "description": "HTTP gateway for multi-database queries. Spawned by yamlQ CLI or run standalone via `db-gateway serve`.",
+    "version": "0.1.0"
+  },
+  "servers": [
+    { "url": "http://127.0.0.1:{port}", "variables": { "port": { "default": "0" } } }
+  ],
+  "paths": {
+    "/connect": {
+      "post": {
+        "summary": "建立数据库连接",
+        "operationId": "connect",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["driver", "dsn"],
+                "properties": {
+                  "driver": {"type": "string", "enum": ["mysql","postgres","oracle","opengauss","ob-mysql","ob-oracle","gd-mysql","gd-oracle","sqlite","clickhouse","sqlserver"]},
+                  "dsn": {"type": "string"},
+                  "max_open_conns": {"type": "integer", "default": 5},
+                  "max_idle_conns": {"type": "integer", "default": 2},
+                  "conn_max_lifetime": {"type": "integer", "default": 300}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "连接成功/失败",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "conn_id": {"type": "string"},
+                    "error": {"type": "string"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/query": {
+      "post": {
+        "summary": "执行 SQL 查询",
+        "operationId": "query",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["conn_id", "sql"],
+                "properties": {
+                  "conn_id": {"type": "string"},
+                  "sql": {"type": "string"},
+                  "params": {"type": "array", "items": {"type": "string"}},
+                  "page": {"type": "integer", "default": 0},
+                  "page_size": {"type": "integer", "default": 0},
+                  "timeout": {"type": "integer", "default": 30}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "查询结果",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "columns": {"type": "array", "items": {"type": "string"}},
+                    "rows": {"type": "array", "items": {"type": "array"}},
+                    "truncated": {"type": "boolean"},
+                    "error": {"type": "object"}
+                  }
+                }
+              }
+            }
+          },
+          "503": {"description": "队列满"}
+        }
+      }
+    },
+    "/close": {
+      "post": {
+        "summary": "关闭数据库连接",
+        "operationId": "close",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["conn_id"],
+                "properties": {"conn_id": {"type": "string"}}
+              }
+            }
+          }
+        },
+        "responses": {"200": {"description": "关闭结果"}}
+      }
+    },
+    "/ping": {
+      "get": {
+        "summary": "连接健康检查",
+        "operationId": "ping",
+        "parameters": [
+          {"name": "conn_id", "in": "query", "schema": {"type": "string"}}
+        ],
+        "responses": {"200": {"description": "连接状态"}}
+      }
+    },
+    "/shutdown": {
+      "post": {
+        "summary": "关闭网关",
+        "operationId": "shutdown",
+        "responses": {"200": {"description": "网关即将退出"}}
+      }
+    }
+  }
+}
