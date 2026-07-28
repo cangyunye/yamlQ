@@ -57,7 +57,7 @@ cmd_start() {
         exit 0
     fi
 
-    args=("--mode" "service" "--daemon")
+    args=("serve")
     [ -n "$AUTH_TOKEN" ] && args+=("--auth-token" "$AUTH_TOKEN")
     [ -n "$PORT" ] && args+=("--port" "$PORT")
 

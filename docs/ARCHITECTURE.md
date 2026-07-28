@@ -28,6 +28,9 @@
 | `postgres` | `jackc/pgx/v5/stdlib` | |
 | `oracle` | `sijms/go-ora/v2` | 纯 Go，免 Instant Client |
 | `opengauss` | `jackc/pgx/v5/stdlib` | PG 协议兼容 |
+| `sqlite` | `mattn/go-sqlite3` | 本地文件数据库 |
+| `clickhouse` | `clickhouse-go/v2` | 列式分析数据库 |
+| `sqlserver` | `denisenkom/go-mssqldb` | Microsoft SQL Server |
 
 > **OB Oracle DSN 说明：**
 > - 非集群 OBProxy / 直连: `user@tenant:password@tcp(host:port)/db`
@@ -217,7 +220,7 @@ YAMLQ_GATEWAY_DAEMON=1
 |---|---|---|
 | 默认（一次性） | `yamlq config.yaml` | Python 拉起 gateway，退出时关停 |
 | 常驻（daemon） | `YAMLQ_GATEWAY_DAEMON=1 yamlq config.yaml` | Python 拉起 gateway 并常驻，退出不影响 gateway |
-| 独立启动 | `./db-gateway --mode service --daemon` | 独立运行，yamlq 通过 env 文件发现并复用 |
+| 独立启动 | `./db-gateway serve --port 9999 --auth-token x` | serve 子命令，自带 /docs 调测页面 |
 | 直接复用 | `YAMLQ_GATEWAY_URL=http://127.0.0.1:54321 yamlq config.yaml` | 跳过发现，直连指定 gateway |
 
 ## 7. 术语表
