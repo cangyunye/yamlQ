@@ -158,13 +158,21 @@ func (s *Server) handleShutdown(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleOpenAPI(w http.ResponseWriter, r *http.Request) {
-	data, _ := staticFiles.ReadFile("openapi.json")
+	data, err := staticFiles.ReadFile("openapi.json")
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(data)
 }
 
 func (s *Server) handleDocs(w http.ResponseWriter, r *http.Request) {
-	data, _ := staticFiles.ReadFile("swagger.html")
+	data, err := staticFiles.ReadFile("swagger.html")
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write(data)
 }

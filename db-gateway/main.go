@@ -65,40 +65,7 @@ func main() {
 		srv.SetAuthToken(*authToken)
 	}
 
-	addr := fmt.Sprintf("127.0.0.1:%d", *portFlag)
-	ln, err := net.Listen("tcp", addr)
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
-	port := ln.Addr().(*net.TCPAddr).Port
-	fmt.Printf("listening on port %d\n", port)
-
-	if *daemonMode {
-		writeEnvFile(port, *authToken, *daemonMode)
-	}
-
-	httpServer := &http.Server{Handler: srv.Handler()}
-
-	go func() {
-		if err := httpServer.Serve(ln); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("server error: %v", err)
-		}
-	}()
-
-	srv.SetShutdownFunc(func() {
-		cleanupEnvFile()
-		mgr.CloseAll()
-		httpServer.Shutdown(context.Background())
-		os.Exit(0)
-	})
-
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-	<-sigCh
-
-	cleanupEnvFile()
-	mgr.CloseAll()
-	httpServer.Shutdown(context.Background())
+	run(mgr, srv, *portFlag, *authToken, *daemonMode)
 }
 
 func runServe(port int, authToken string) {
@@ -109,6 +76,10 @@ func runServe(port int, authToken string) {
 	if authToken != "" {
 		srv.SetAuthToken(authToken)
 	}
+	run(mgr, srv, port, authToken, true)
+}
+
+func run(mgr *conn.Manager, srv *server.Server, port int, authToken string, writeEnv bool) {
 	addr := fmt.Sprintf("127.0.0.1:%d", port)
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -116,7 +87,9 @@ func runServe(port int, authToken string) {
 	}
 	actualPort := ln.Addr().(*net.TCPAddr).Port
 	fmt.Printf("listening on port %d\n", actualPort)
-	writeEnvFile(actualPort, authToken, true)
+	if writeEnv {
+		writeEnvFile(actualPort, authToken, true)
+	}
 	httpServer := &http.Server{Handler: srv.Handler()}
 	go func() {
 		if err := httpServer.Serve(ln); err != nil && err != http.ErrServerClosed {
