@@ -195,7 +195,32 @@ cli/yamlq/
 | 单查询 | 30s | Go context.WithTimeout | 返回部分行 + QUERY_TIMEOUT |
 | 会话 | 120s | Python ThreadPoolExecutor | 取消剩余, 全部 /close |
 
-## 6. 术语表
+## 6. Gateway 常驻模式
+
+### 环境变量 / 文件发现
+
+| 机制 | 路径 | 说明 |
+|---|---|---|
+| `YAMLQ_GATEWAY_URL` | 环境变量 | 直接指定已运行 gateway 地址 |
+| `.yamlq-gateway.env` | 当前目录 | gateway 启动时自动写入 |
+
+`.yamlq-gateway.env` 文件内容:
+```
+YAMLQ_GATEWAY_URL=http://127.0.0.1:54321
+YAMLQ_GATEWAY_AUTH=my-token
+YAMLQ_GATEWAY_DAEMON=1
+```
+
+### 启动模式
+
+| 模式 | 命令 | 行为 |
+|---|---|---|
+| 默认（一次性） | `yamlq config.yaml` | Python 拉起 gateway，退出时关停 |
+| 常驻（daemon） | `YAMLQ_GATEWAY_DAEMON=1 yamlq config.yaml` | Python 拉起 gateway 并常驻，退出不影响 gateway |
+| 独立启动 | `./db-gateway --mode service --daemon` | 独立运行，yamlq 通过 env 文件发现并复用 |
+| 直接复用 | `YAMLQ_GATEWAY_URL=http://127.0.0.1:54321 yamlq config.yaml` | 跳过发现，直连指定 gateway |
+
+## 7. 术语表
 
 | 术语 | 定义 |
 |---|---|
@@ -207,7 +232,7 @@ cli/yamlq/
 | Converter | Python 侧字段转换函数（datetime_to_iso, status_to_cn 等） |
 | 双层超时 | 单查询超时 + 会话超时 |
 
-## 7. 关键决策
+## 8. 关键决策
 
 | 决策 | 理由 |
 |---|---|
