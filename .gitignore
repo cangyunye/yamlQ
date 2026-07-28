@@ -39,3 +39,6 @@ Desktop.ini
 # Environment
 .env
 .env.*
+
+# Agent scratch files
+.superpowers/

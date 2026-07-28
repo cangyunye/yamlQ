@@ -195,7 +195,7 @@ class YamlViewApp(App):
     def __init__(
         self,
         views: list[ViewConfig],
-        gateway: Gateway,
+        gateway: Gateway | None,
         param_overrides: dict[str, str],
         timeout: int = 30,
     ):
@@ -209,13 +209,18 @@ class YamlViewApp(App):
 
     def compose(self) -> ComposeResult:
         yield Header()
-        with TabbedContent(initial=self.views[0].key if self.views else ""):
-            for view in self.views:
-                with TabPane(f"{view.view_name}  @{view.db_type}+{view.dsn}", id=view.key):
-                    yield ViewPane(view, id=f"pane-{view.key}")
+        if not self.views:
+            yield Static("未指定配置文件，请使用 yamlq <配置文件> 启动或按 q 退出", id="welcome")
+        else:
+            with TabbedContent(initial=self.views[0].key if self.views else ""):
+                for view in self.views:
+                    with TabPane(f"{view.view_name}  @{view.db_type}+{view.dsn}", id=view.key):
+                        yield ViewPane(view, id=f"pane-{view.key}")
         yield Footer()
 
     def on_mount(self) -> None:
+        if not self.views or self.gateway is None:
+            return
         needs_input = [
             v for v in self.views
             if any(p.default is None and p.name not in self.param_overrides for p in v.params)

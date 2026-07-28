@@ -15,10 +15,11 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command")
 
     run_p = sub.add_parser("run", help="execute views (default)")
+    run_p.add_argument("config", nargs="?", default=None, help="YAML file or directory")
     _add_common_args(run_p)
 
     check_p = sub.add_parser("check", help="validate views config")
-    check_p.add_argument("-c", "--config", required=True, help="YAML file or directory")
+    check_p.add_argument("config", help="YAML file or directory")
 
     _add_common_args(parser)
     return parser
@@ -26,7 +27,6 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _add_common_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--version", action="store_true", help="print version and exit")
-    parser.add_argument("-c", "--config", help="YAML file or directory")
     parser.add_argument("-v", "--views", help="comma-separated view keys to run")
     parser.add_argument("--param", action="append", default=[], help="key=value param override")
     parser.add_argument("--mode", default="cli", choices=["cli", "service"], help="gateway mode")
@@ -75,10 +75,6 @@ def _run_view(gw: Gateway, view: ViewConfig, conn_id: str, param_overrides: dict
 
 
 def cmd_run(args: argparse.Namespace) -> int:
-    if not args.config:
-        print("error: -c/--config is required", file=sys.stderr)
-        return 1
-
     try:
         views = load_views(args.config)
     except ConfigError as e:
@@ -163,6 +159,13 @@ def _run_tui(views: list[ViewConfig], gw: Gateway, param_overrides: dict[str, st
     return 0
 
 
+def _run_tui_no_config() -> int:
+    from yamlq.tui.app import YamlViewApp
+    app = YamlViewApp([], None, {}, 30)
+    app.run()
+    return 0
+
+
 def cmd_check(args: argparse.Namespace) -> int:
     try:
         views = load_views(args.config)
@@ -181,6 +184,10 @@ def cmd_check(args: argparse.Namespace) -> int:
 
 def main() -> None:
     parser = build_parser()
+
+    if len(sys.argv) > 1 and sys.argv[1] not in ("run", "check", "-h", "--help", "--version"):
+        sys.argv.insert(1, "run")
+
     args = parser.parse_args()
 
     if getattr(args, "version", False):
@@ -189,5 +196,8 @@ def main() -> None:
 
     if args.command == "check":
         sys.exit(cmd_check(args))
-    else:
-        sys.exit(cmd_run(args))
+
+    if not args.config:
+        sys.exit(_run_tui_no_config())
+
+    sys.exit(cmd_run(args))
