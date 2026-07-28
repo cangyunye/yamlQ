@@ -30,6 +30,12 @@ var registry = map[string]OpenFunc{
 	"ob-oracle": func(dsn string) (*sql.DB, error) {
 		return sql.Open("mysql", dsn)
 	},
+	"gd-mysql": func(dsn string) (*sql.DB, error) {
+		return sql.Open("mysql", dsn)
+	},
+	"gd-oracle": func(dsn string) (*sql.DB, error) {
+		return sql.Open("mysql", dsn)
+	},
 }
 
 func Open(driver, dsn string) (*sql.DB, error) {
