@@ -29,6 +29,11 @@
 | `oracle` | `sijms/go-ora/v2` | 纯 Go，免 Instant Client |
 | `opengauss` | `jackc/pgx/v5/stdlib` | PG 协议兼容 |
 
+> **OB Oracle DSN 说明：**
+> - 非集群 OBProxy / 直连: `user@tenant:password@tcp(host:port)/db`
+> - 集群 OBProxy: `user@tenant#cluster:password@tcp(host:port)/db`
+> - `go-sql-driver/mysql` 按最后一个 `@` 分割，用户名内的 `@` 和 `#` 均属合法字符
+
 扩展无原生 Go 驱动的库（达梦、Kingbase）：参考 GoNavi driver-agent 模式，通过子进程桥接，主进程 HTTP 接口不变。
 
 ## 3. HTTP API 合约
