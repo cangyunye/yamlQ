@@ -15,7 +15,7 @@ func init() {
 		return sql.Open("mysql", dsn)
 	}
 	registry["ob-oracle"] = func(dsn string) (*sql.DB, error) {
-		return sql.Open("mysql", dsn)
+		return sql.Open("oracle", dsn)
 	}
 	registry["gd-mysql"] = func(dsn string) (*sql.DB, error) {
 		return sql.Open("mysql", dsn)

@@ -25,17 +25,17 @@
 | `oracle` | `sijms/go-ora/v2` | 默认 | 纯 Go，免 Instant Client |
 | `opengauss` | `jackc/pgx/v5/stdlib` | 默认 | PG 协议兼容 |
 | `ob-mysql` | `go-sql-driver/mysql` | `all` | OceanBase MySQL 租户 |
-| `ob-oracle` | `go-sql-driver/mysql` | `all` | OceanBase Oracle 租户，Oracle SQL 方言 |
+| `ob-oracle` | `sijms/go-ora/v2` | `all` | OceanBase Oracle 租户，Oracle 协议，Oracle SQL 方言 |
 | `gd-mysql` | `go-sql-driver/mysql` | `all` | GoldenDB MySQL 模式 |
 | `gd-oracle` | `go-sql-driver/mysql` | `all` | GoldenDB Oracle 模式，Oracle SQL 方言 |
 | `sqlite` | `mattn/go-sqlite3` | `all` | 本地文件数据库 |
 | `clickhouse` | `clickhouse-go/v2` | `all` | 列式分析数据库 |
 | `sqlserver` | `denisenkom/go-mssqldb` | `all` | Microsoft SQL Server |
 
-> **OB Oracle DSN 说明：**
-> - 非集群 OBProxy / 直连: `user@tenant:password@tcp(host:port)/db`
-> - 集群 OBProxy: `user@tenant#cluster:password@tcp(host:port)/db`
-> - `go-sql-driver/mysql` 按最后一个 `@` 分割，用户名内的 `@` 和 `#` 均属合法字符
+> **OB Oracle DSN 说明（go-ora 简单连接字符串）：**
+> - 非集群 OBProxy / 直连: `user@tenant/password@host:port/service_name`
+> - 集群 OBProxy: `user@tenant#cluster/password@host:port/service_name`
+> - go-ora 按最后一个 `@` 分割 userinfo 与地址，按第一个 `/` 分割用户名与密码，用户名内的 `@` 和 `#` 均属合法字符
 
 默认编译仅包含 `mysql`、`postgres`、`opengauss`、`oracle` 四种基础驱动。完整驱动（OB、GoldenDB、SQLite、ClickHouse、SQL Server）及 `serve` 子命令需使用 `-tags all` 编译：
 

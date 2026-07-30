@@ -2,19 +2,22 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use subagent-driven-development (recommended) to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add `ob-mysql` and `ob-oracle` as first-class drivers in yamlQ, backed entirely by existing `go-sql-driver/mysql` (OB speaks MySQL wire protocol). No new Go dependencies.
+**Goal:** Add `ob-mysql` and `ob-oracle` as first-class drivers in yamlQ.
+- `ob-mysql` backed by existing `go-sql-driver/mysql` (OB MySQL tenant speaks MySQL wire protocol).
+- `ob-oracle` backed by existing `sijms/go-ora/v2` (OB Oracle tenant requires Oracle protocol).
 
-**Architecture:** Two registry entries share `sql.Open("mysql", dsn)`; only pagination dialect differs between them. Unit tests need zero database. Test data YAML files serve as integration specs.
+**Architecture:** `ob-mysql` uses `sql.Open("mysql", dsn)`; `ob-oracle` uses `sql.Open("oracle", dsn)`. Only pagination dialect differs between them. Unit tests need zero database. Test data YAML files serve as integration specs.
 
-**Tech Stack:** Go 1.25, `github.com/go-sql-driver/mysql` v1.10.0 (existing)
+**Tech Stack:** Go 1.25, `github.com/go-sql-driver/mysql` v1.10.0 (existing), `github.com/sijms/go-ora/v2` (existing)
 
 ## Global Constraints
 
-- Zero new Go module dependencies — both drivers reuse `go-sql-driver/mysql`
+- Zero new Go module dependencies — `ob-mysql` reuses `go-sql-driver/mysql`, `ob-oracle` reuses `sijms/go-ora/v2`
 - No changes to Python code — Python just passes `"driver": "ob-mysql"` / `"ob-oracle"` as strings
 - No changes to `conn/` or `server/` — they work generically over `*sql.DB`
 - Pagination test must remain database-free (table-driven, no `sql.Open`)
-- DSN format for OB: `user@tenant:password@tcp(host:port)/dbname?charset=utf8mb4`
+- DSN format for OB-MySQL: `user@tenant:password@tcp(host:port)/dbname?charset=utf8mb4`
+- DSN format for OB-Oracle: `user@tenant/password@host:port/service_name` (go-ora simple connection string)
 
 ---
 
@@ -63,7 +66,7 @@ var registry = map[string]OpenFunc{
 		return sql.Open("mysql", dsn)
 	},
 	"ob-oracle": func(dsn string) (*sql.DB, error) {
-		return sql.Open("mysql", dsn)
+		return sql.Open("oracle", dsn)
 	},
 }
 ```
@@ -178,7 +181,7 @@ func TestOpenReturnsDB(t *testing.T) {
 		dsn    string
 	}{
 		{name: "ob-mysql", driver: "ob-mysql", dsn: "root:pass@tcp(127.0.0.1:2883)/test"},
-		{name: "ob-oracle", driver: "ob-oracle", dsn: "user@tenant:pass@tcp(127.0.0.1:2883)/test"},
+		{name: "ob-oracle", driver: "ob-oracle", dsn: "user@tenant/pass@127.0.0.1:2883/test"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -341,7 +344,7 @@ ob_emp_list:
   view_name: "OB 员工列表"
   description: "OceanBase Oracle 租户员工查询"
   db_type: "ob-oracle"
-  dsn: "scott@oracle_tenant:password@tcp(192.168.1.100:2883)/test_db?charset=utf8mb4"
+  dsn: "scott@oracle_tenant/password@192.168.1.100:2883/test_db"
   sql: |
     SELECT empno, ename, job, sal, hiredate
     FROM emp
@@ -373,7 +376,7 @@ ob_dept_summary:
   view_name: "OB 部门汇总"
   description: "OceanBase Oracle 租户分析查询"
   db_type: "ob-oracle"
-  dsn: "scott@oracle_tenant:password@tcp(192.168.1.100:2883)/test_db?charset=utf8mb4"
+  dsn: "scott@oracle_tenant/password@192.168.1.100:2883/test_db"
   sql: |
     SELECT d.dname,
            COUNT(e.empno) AS emp_count,
@@ -421,7 +424,7 @@ Edit the table in `docs/ARCHITECTURE.md`, replacing rows 21-27:
 |---|---|---|
 | `mysql` | `go-sql-driver/mysql` | 兼容 GoldenDB-MySQL |
 | `ob-mysql` | `go-sql-driver/mysql` | OceanBase MySQL 租户，MySQL 协议 |
-| `ob-oracle` | `go-sql-driver/mysql` | OceanBase Oracle 租户，MySQL 协议，Oracle SQL 方言 |
+| `ob-oracle` | `sijms/go-ora/v2` | OceanBase Oracle 租户，Oracle 协议，Oracle SQL 方言 |
 | `postgres` | `jackc/pgx/v5/stdlib` | |
 | `oracle` | `sijms/go-ora/v2` | 纯 Go，免 Instant Client |
 | `opengauss` | `jackc/pgx/v5/stdlib` | PG 协议兼容 |
