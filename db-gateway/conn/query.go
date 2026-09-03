@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"yamlq/db-gateway/dialect"
+	"yamlq/db-gateway/driver"
 	"yamlq/db-gateway/errs"
 )
 
@@ -29,6 +30,9 @@ func (m *Manager) executeOne(mc *ManagedConn, task *QueryTask) *QueryResult {
 	start := time.Now()
 
 	finalSQL := dialect.WrapPagination(mc.Driver, task.SQL, task.Page, task.PageSize)
+	if driver.OracleBinds(mc.Driver, mc.DSN) && len(task.Params) > 0 {
+		finalSQL = dialect.RewritePositional(finalSQL, len(task.Params))
+	}
 	rows, err := mc.DB.QueryContext(ctx, finalSQL, task.Params...)
 	if err != nil {
 		return &QueryResult{

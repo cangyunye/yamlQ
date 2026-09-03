@@ -2,9 +2,11 @@ ob_emp_list:
   view_name: "OB 员工列表"
   description: "OceanBase Oracle 租户员工查询（直连 / 非集群 OBProxy）"
   db_type: "ob-oracle"
-  dsn: "scott@oracle_tenant/password@192.168.1.100:2883/test_db"
-  # 集群 OBProxy 模式 DSN 示例（需含 #cluster）:
-  # dsn: "scott@oracle_tenant#obcluster/password@192.168.1.100:2883/test_db"
+  # go-ora TNS（Oracle 协议端点）:
+  # dsn: "scott@oracle_tenant/password@192.168.1.100:1521/test_db"
+  # obconnector-go MySQL 线协议（直连 OBServer 2881 / OBProxy 2883，推荐）:
+  dsn: "mysql://scott@oracle_tenant:password@192.168.1.100:2883/test_db"
+  # 集群 OBProxy 模式: dsn: "mysql://scott@oracle_tenant:password@192.168.1.100:2883/test_db?cluster=obcluster"
   sql: |
     SELECT empno, ename, job, sal, hiredate
     FROM emp
@@ -34,9 +36,9 @@ ob_emp_list:
 
 ob_dept_summary:
   view_name: "OB 部门汇总"
-  description: "OceanBase Oracle 租户分析查询（集群 OBProxy 模式）"
+  description: "OceanBase Oracle 租户分析查询（集群 OBProxy 2883 模式）"
   db_type: "ob-oracle"
-  dsn: "scott@oracle_tenant#obcluster/password@192.168.1.100:2883/test_db"
+  dsn: "mysql://scott@oracle_tenant:password@192.168.1.100:2883/test_db?cluster=obcluster"
   sql: |
     SELECT d.dname,
            COUNT(e.empno) AS emp_count,

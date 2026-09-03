@@ -36,6 +36,7 @@ func TestOpenReturnsDBExtra(t *testing.T) {
 	}{
 		{name: "ob-mysql", driver: "ob-mysql", dsn: "root:pass@tcp(127.0.0.1:2883)/test"},
 		{name: "ob-oracle", driver: "ob-oracle", dsn: "user@tenant/pass@127.0.0.1:2883/test"},
+		{name: "ob-oracle-wire", driver: "ob-oracle", dsn: "mysql://user@tenant:pass@127.0.0.1:2883/test?cluster=obcluster"},
 		{name: "gd-mysql", driver: "gd-mysql", dsn: "root:pass@tcp(127.0.0.1:3306)/test"},
 		{name: "gd-oracle", driver: "gd-oracle", dsn: "root:pass@tcp(127.0.0.1:3306)/test"},
 		{name: "sqlite", driver: "sqlite", dsn: ":memory:"},

@@ -7,6 +7,7 @@ import (
 
 	_ "github.com/ClickHouse/clickhouse-go/v2"
 	_ "github.com/denisenkom/go-mssqldb"
+	_ "github.com/helingjun/obconnector-go" // registers "oceanbase"/"oboracle" drivers
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -15,7 +16,11 @@ func init() {
 		return sql.Open("mysql", dsn)
 	}
 	registry["ob-oracle"] = func(dsn string) (*sql.DB, error) {
-		return sql.Open("oracle", dsn)
+		sqlDriver, resolvedDSN, err := ResolveOBOracle(dsn)
+		if err != nil {
+			return nil, err
+		}
+		return sql.Open(sqlDriver, resolvedDSN)
 	}
 	registry["gd-mysql"] = func(dsn string) (*sql.DB, error) {
 		return sql.Open("mysql", dsn)
