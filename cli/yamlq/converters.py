@@ -16,10 +16,22 @@ _STATUS_MAP = {
 }
 
 
+def _parse_datetime(v: str) -> datetime | None:
+    # The Go gateway serialises time.Time to ISO-8601, so converter inputs are
+    # strings in practice (e.g. "2021-03-15T09:00:00Z").
+    try:
+        return datetime.fromisoformat(v.strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
 def _datetime_to_iso(v: Any) -> str:
     if isinstance(v, (datetime, date)):
         return v.strftime("%Y-%m-%d")
     if isinstance(v, str) and v:
+        parsed = _parse_datetime(v)
+        if parsed is not None:
+            return parsed.strftime("%Y-%m-%d")
         return v[:10]
     return ""
 
@@ -28,6 +40,9 @@ def _datetime_to_cn(v: Any) -> str:
     if isinstance(v, (datetime, date)):
         return v.strftime("%Y年%m月%d日 %H:%M")
     if isinstance(v, str) and v:
+        parsed = _parse_datetime(v)
+        if parsed is not None:
+            return parsed.strftime("%Y年%m月%d日 %H:%M")
         return v
     return ""
 
