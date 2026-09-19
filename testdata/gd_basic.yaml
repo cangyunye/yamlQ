@@ -2,7 +2,7 @@ gd_user_list:
   view_name: "GoldenDB 用户列表"
   description: "GoldenDB MySQL 模式用户查询"
   db_type: "gd-mysql"
-  dsn: "root:password@tcp(192.168.1.100:3306)/test_db?charset=utf8mb4"
+  dsn: "root:password@tcp(192.168.1.100:1523)/test_db?charset=utf8mb4"
   sql: |
     SELECT user_id, user_name, status, created_at
     FROM t_user
@@ -32,7 +32,7 @@ gd_order_stats:
   view_name: "GoldenDB 订单统计"
   description: "GoldenDB MySQL 模式聚合查询"
   db_type: "gd-mysql"
-  dsn: "root:password@tcp(192.168.1.100:3306)/test_db?charset=utf8mb4"
+  dsn: "root:password@tcp(192.168.1.100:1523)/test_db?charset=utf8mb4"
   sql: |
     SELECT DATE(create_time) AS dt, COUNT(*) AS cnt, SUM(amount) AS total
     FROM t_order

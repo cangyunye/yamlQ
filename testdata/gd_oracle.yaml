@@ -2,7 +2,7 @@ gd_emp_list:
   view_name: "GoldenDB 员工列表"
   description: "GoldenDB Oracle 模式员工查询"
   db_type: "gd-oracle"
-  dsn: "scott:password@tcp(192.168.1.100:3306)/test_db?charset=utf8mb4"
+  dsn: "scott:password@tcp(192.168.1.100:1523)/test_db?charset=utf8mb4"
   sql: |
     SELECT empno, ename, job, sal, hiredate
     FROM emp
@@ -34,7 +34,7 @@ gd_dept_summary:
   view_name: "GoldenDB 部门汇总"
   description: "GoldenDB Oracle 模式分析查询"
   db_type: "gd-oracle"
-  dsn: "scott:password@tcp(192.168.1.100:3306)/test_db?charset=utf8mb4"
+  dsn: "scott:password@tcp(192.168.1.100:1523)/test_db?charset=utf8mb4"
   sql: |
     SELECT d.dname,
            COUNT(e.empno) AS emp_count,

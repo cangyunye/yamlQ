@@ -43,9 +43,11 @@ def _find_existing_gateway() -> dict | None:
 
 
 def _find_binary() -> str:
-    candidate = Path(__file__).resolve().parent.parent.parent / "db-gateway" / "db-gateway"
-    if candidate.is_file():
-        return str(candidate)
+    base = Path(__file__).resolve().parent.parent.parent / "db-gateway"
+    for name in ("db-gateway", "db-gateway.exe"):
+        candidate = base / name
+        if candidate.is_file():
+            return str(candidate)
     found = shutil.which("db-gateway")
     if found:
         return found

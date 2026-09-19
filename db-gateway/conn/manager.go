@@ -60,7 +60,7 @@ func (m *Manager) OpenConn(driverName, dsn string, maxOpen, maxIdle, lifetimeSec
 	db, err := driver.Open(driverName, dsn)
 	if err != nil {
 		<-m.globalSem
-		return "", fmt.Errorf("failed to open driver %s: %w", driverName, err)
+		return "", fmt.Errorf("failed to open driver %s: %w", driverName, driver.AnnotateConnectError(driverName, dsn, err))
 	}
 
 	if maxOpen <= 0 {
@@ -80,7 +80,7 @@ func (m *Manager) OpenConn(driverName, dsn string, maxOpen, maxIdle, lifetimeSec
 	if err := db.Ping(); err != nil {
 		db.Close()
 		<-m.globalSem
-		return "", fmt.Errorf("connection ping failed: %w", err)
+		return "", fmt.Errorf("connection ping failed: %w", driver.AnnotateConnectError(driverName, dsn, err))
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
