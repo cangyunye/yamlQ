@@ -36,6 +36,8 @@
 > - 遗留 go-ora（Oracle TNS 协议，`?` 占位符自动改写为 `:N` 绑定）：无 scheme 简单串或 `oracle://` URL — `user@tenant/password@host:port/service_name`，集群 `user@tenant#cluster/password@host:port/service_name`
 > - obconnector-go（OceanBase MySQL 线协议，原生 `?` 绑定；直连 OBServer `:2881` / OBProxy `:2883`，推荐）：`mysql://user@tenant:password@host:2883/db?cluster=obcluster`，网关自动改写为 `oboracle://` 并追加 `preset=oboracle`；`cluster` 仅在非 2881 端口折入用户名 `user@tenant#cluster`
 > - 用户名含 `@`（如 `user@tenant`）时须编码为 `%40`，`#` 须编码为 `%23`；可选参数：`timeout`、`preset`、`cap.add`/`cap.drop`（OB 私有 capability）、`attr.*`（连接属性）、`init`（多值 init SQL）
+> - 两种 DSN 的用户名编码规则不同：URL 形式（`mysql://`/`oboracle://`）按 URL 规则必须 `%40`/`%23`；MySQL DSN 形式（`ob-mysql`/`gd-*`）的 userinfo **不做**百分号解码，含 `@` 的租户用户名直接裸写（如 `root@sys:pass@tcp(host:2881)/db`，驱动按最后一个 `@` 切分 userinfo）
+> - OceanBase Oracle 租户默认 `autocommit=OFF`（Oracle 语义）：经网关执行 DML 不会自动提交，需显式 `COMMIT`，`SELECT` 不受影响
 > - 连接失败时网关按错误类型附加提示：DSN 格式错误（missing port）、TNS 握手失败（疑似 MySQL-wire 端口）、OB Error 1235（Oracle tenant not supported）分别建议正确的 DSN 写法
 
 默认编译仅包含 `mysql`、`postgres`、`opengauss`、`oracle` 四种基础驱动。完整驱动（OB、GoldenDB、SQLite、ClickHouse、SQL Server）及 `serve` 子命令需使用 `-tags all` 编译：
