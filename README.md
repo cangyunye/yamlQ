@@ -39,6 +39,26 @@ yamlq --version
 # yamlq 0.1.0 (commit abc1234)
 ```
 
+## 常驻网关（serve）
+
+默认情况下，每次 `yamlq run` 都会启动一个随用随走的网关进程。频繁执行时，可把网关变成常驻守护进程，数据库连接池跨命令复用，免去每次的 TCP 握手与认证开销：
+
+```bash
+# 启动常驻网关（前台运行，Ctrl+C 退出）
+yamlq serve
+
+# 自定义端口 / 连接池空闲回收时间 / 鉴权 token
+yamlq serve --port 7788 --conn-idle-timeout 1800 --auth-token my-secret
+```
+
+`yamlq serve` 启动后会把发现信息写入 `~/.yamlq/gateway.env`（以及当前目录的 `.yamlq-gateway.env`），此后所有 `yamlq run` 自动发现并复用该网关：
+
+- 连接池按 `驱动+DSN` 幂等复用，第二次 run 零握手开销；
+- 运行结束不再关闭连接池，由网关按 `--conn-idle-timeout`（默认 600 秒）回收空闲池；
+- 网关每 30 秒对空闲池做活性探测，失效连接自动清理，下次 `/connect` 透明重建；CLI 侧查询遇到 `CONNECTION_LOST` 也会自动重连重试一次。
+
+安全提示：常驻网关监听 `127.0.0.1`，长期存活，建议配合 `--auth-token` 使用；token 会写入发现文件（本机用户可读）。
+
 ## CLI 参数
 
 | 参数 | 说明 |
@@ -52,6 +72,7 @@ yamlq --version
 | `--mode` | 网关模式 `cli`（默认）或 `service` |
 | `--auth-token` | 网关鉴权 token |
 | `--verbose` | 详细日志 |
+| `--conn-idle-timeout` | `serve` 模式连接池空闲回收秒数（默认 600，0 关闭） |
 
 ## YAML 配置
 

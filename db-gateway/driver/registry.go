@@ -34,6 +34,12 @@ func Open(driver, dsn string) (*sql.DB, error) {
 	return fn(dsn)
 }
 
+// Register adds a driver to the registry. Production drivers register via
+// init; this exported hook exists mainly for tests that plug in a fake.
+func Register(name string, fn OpenFunc) {
+	registry[name] = fn
+}
+
 func Supported(driver string) bool {
 	_, ok := registry[driver]
 	return ok

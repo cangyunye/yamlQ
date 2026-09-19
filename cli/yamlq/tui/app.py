@@ -263,11 +263,14 @@ class YamlViewApp(App):
                 self._results[view.key] = result
                 self.call_from_thread(self._update_pane, view.key, result)
 
-        for conn_id in conn_cache.values():
-            try:
-                self.gateway.close(conn_id)
-            except Exception:
-                pass
+        # Attached (daemon) gateways keep pools across runs; only close the
+        # pools of a gateway this process spawned itself.
+        if self.gateway.is_owned():
+            for conn_id in conn_cache.values():
+                try:
+                    self.gateway.close(conn_id)
+                except Exception:
+                    pass
 
     def _fetch_one(self, view: ViewConfig, conn_cache: dict) -> ViewResult:
         ck = view.conn_key

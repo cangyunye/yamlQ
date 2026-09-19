@@ -68,9 +68,20 @@ def render_table(view: ViewConfig, result: dict) -> None:
         row_styles=theme["row_styles"],
     )
 
+    # Column-name matching must tolerate case: Oracle-style backends (oracle,
+    # ob-oracle, openGauss A-mode) report uppercased identifiers while user
+    # column configs are usually lowercase. Exact match wins, then casefold.
     col_cfgs = {c.field: c for c in view.columns}
-    for col_name in columns:
+    col_cfgs_folded = {k.casefold(): v for k, v in col_cfgs.items()}
+
+    def cfg_for(col_name: str):
         cfg = col_cfgs.get(col_name)
+        if cfg is None:
+            cfg = col_cfgs_folded.get(col_name.casefold())
+        return cfg
+
+    for col_name in columns:
+        cfg = cfg_for(col_name)
         header = cfg.header if cfg else col_name
         justify = cfg.align if cfg else "left"
         style = cfg.style if cfg else ""
@@ -88,7 +99,7 @@ def render_table(view: ViewConfig, result: dict) -> None:
         cells = []
         for i, val in enumerate(row):
             col_name = columns[i] if i < len(columns) else ""
-            cfg = col_cfgs.get(col_name)
+            cfg = cfg_for(col_name)
             if cfg and cfg.converter:
                 val = apply_converter(cfg.converter, val)
             cells.append(str(val) if val is not None else "")

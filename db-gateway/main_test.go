@@ -101,6 +101,51 @@ func TestEnvFileDeletedOnShutdown(t *testing.T) {
 	}
 }
 
+func TestGlobalEnvFileWritten(t *testing.T) {
+	tmpDir := t.TempDir()
+	origWd, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	t.Cleanup(func() { os.Chdir(origWd) })
+
+	origDir := globalEnvDir
+	globalEnvDir = func() string { return filepath.Join(tmpDir, "global") }
+	t.Cleanup(func() { globalEnvDir = origDir })
+
+	writeEnvFile(8080, "", true)
+	data, err := os.ReadFile(filepath.Join(tmpDir, "global", "gateway.env"))
+	if err != nil {
+		t.Fatalf("global discovery file missing: %v", err)
+	}
+	if !strings.Contains(string(data), "YAMLQ_GATEWAY_URL=http://127.0.0.1:8080") {
+		t.Errorf("unexpected global env content:\n%s", data)
+	}
+
+	cleanupEnvFile()
+	if _, err := os.Stat(filepath.Join(tmpDir, "global", "gateway.env")); !os.IsNotExist(err) {
+		t.Fatal("global env file should be removed after cleanupEnvFile")
+	}
+}
+
+func TestCleanupKeepsForeignEnvFile(t *testing.T) {
+	// A gateway that never wrote a discovery file must not delete one that
+	// belongs to a resident daemon (e.g. started in the same cwd).
+	tmpDir := t.TempDir()
+	origWd, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	t.Cleanup(func() { os.Chdir(origWd) })
+
+	path := filepath.Join(tmpDir, ".yamlq-gateway.env")
+	if err := os.WriteFile(path, []byte("YAMLQ_GATEWAY_URL=http://127.0.0.1:1\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cleanupEnvFile()
+
+	if _, err := os.Stat(path); err != nil {
+		t.Fatal("cleanup must not remove a discovery file written by another process")
+	}
+}
+
 func TestServeSubcommandParsesFlags(t *testing.T) {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 	port := fs.Int("port", 0, "")

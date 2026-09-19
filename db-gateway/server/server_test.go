@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -14,7 +15,14 @@ import (
 	"yamlq/db-gateway/config"
 )
 
-const testDSN = "root:root123456@tcp(127.0.0.1:3306)/default_db"
+// testDSN is overridable so the suite can run against any local MySQL:
+// YAMLQ_TEST_MYSQL_DSN=root:pw@tcp(host:port)/db go test ./...
+var testDSN = func() string {
+	if v := os.Getenv("YAMLQ_TEST_MYSQL_DSN"); v != "" {
+		return v
+	}
+	return "root:root123456@tcp(127.0.0.1:3306)/default_db"
+}()
 
 func setupTestServer(t *testing.T) *httptest.Server {
 	t.Helper()

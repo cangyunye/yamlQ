@@ -17,18 +17,21 @@ class GatewayError(Exception):
 
 
 GATEWAY_ENV_FILE = ".yamlq-gateway.env"
+HOME_GATEWAY_ENV_FILE = Path.home() / ".yamlq" / "gateway.env"
 
 
 def _load_gateway_env() -> dict[str, str]:
-    env_file = Path.cwd() / GATEWAY_ENV_FILE
-    if not env_file.exists():
-        return {}
-    result = {}
-    for line in env_file.read_text().strip().splitlines():
-        if "=" in line:
-            k, v = line.split("=", 1)
-            result[k] = v
-    return result
+    # CWD-level discovery first (project-scoped daemon), then the user-wide
+    # file that `yamlq serve` writes under ~/.yamlq/.
+    for env_file in (Path.cwd() / GATEWAY_ENV_FILE, HOME_GATEWAY_ENV_FILE):
+        if env_file.exists():
+            result = {}
+            for line in env_file.read_text().strip().splitlines():
+                if "=" in line:
+                    k, v = line.split("=", 1)
+                    result[k] = v
+            return result
+    return {}
 
 
 def _find_existing_gateway() -> dict | None:
@@ -121,6 +124,42 @@ class Gateway:
         self._base_url = f"http://127.0.0.1:{port}"
         if self._verbose:
             print(f"[gateway] started on port {port}, pid={self._proc.pid}", file=sys.stderr)
+
+    def is_owned(self) -> bool:
+        """True when this client spawned the gateway process itself.
+
+        Attached (daemon) clients must not close pools or shut the process
+        down: the pool is meant to outlive a single CLI run.
+        """
+        return self._owned
+
+    def serve(self, port: int = 0, idle_timeout: int = 600) -> int:
+        """Run the gateway as a resident daemon in the foreground.
+
+        stdout/stderr pass through so the user sees the listening line.
+        Returns the gateway process exit code; Ctrl+C reaches the child too
+        (same console) and it shuts down gracefully.
+        """
+        binary = _find_binary()
+        cmd = [binary, "serve"]
+        if port:
+            cmd.append(f"--port={port}")
+        if idle_timeout > 0:
+            cmd.append(f"--conn-idle-timeout={idle_timeout}")
+        if self._auth_token:
+            cmd.append(f"--auth-token={self._auth_token}")
+
+        proc = subprocess.Popen(cmd)
+        try:
+            proc.wait()
+        except KeyboardInterrupt:
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+                raise GatewayError("gateway did not exit after Ctrl+C; killed")
+        return proc.returncode
 
     def stop(self) -> None:
         if not self._owned or self._proc is None:

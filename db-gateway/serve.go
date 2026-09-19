@@ -1,11 +1,10 @@
-//go:build all
-
 package main
 
 import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	"yamlq/db-gateway/config"
 	"yamlq/db-gateway/conn"
@@ -20,6 +19,7 @@ func serve() {
 	serveCmd := flag.NewFlagSet("serve", flag.ExitOnError)
 	port := serveCmd.Int("port", 0, "listen port (default: random)")
 	authToken := serveCmd.String("auth-token", "", "optional auth token for API access")
+	connIdleTimeout := serveCmd.Int("conn-idle-timeout", 600, "close connection pools idle longer than this many seconds (0 disables)")
 	showVersion := serveCmd.Bool("version", false, "print version and exit")
 	serveCmd.Parse(os.Args[2:])
 
@@ -34,6 +34,9 @@ func serve() {
 	srv.SetServeMode(true)
 	if *authToken != "" {
 		srv.SetAuthToken(*authToken)
+	}
+	if *connIdleTimeout > 0 {
+		mgr.StartReaper(time.Duration(*connIdleTimeout)*time.Second, 30*time.Second)
 	}
 	run(mgr, srv, *port, *authToken, true)
 }

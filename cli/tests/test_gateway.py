@@ -7,7 +7,18 @@ from unittest import mock
 
 import requests
 import pytest
+from yamlq import gateway as gateway_module
 from yamlq.gateway import Gateway, GatewayError, _find_existing_gateway, _load_gateway_env
+
+
+@pytest.fixture(autouse=True)
+def _redirect_home_env_file(monkeypatch, tmp_path):
+    """Keep the user-wide ~/.yamlq/gateway.env fallback isolated per test."""
+    monkeypatch.setattr(
+        gateway_module,
+        "HOME_GATEWAY_ENV_FILE",
+        tmp_path / "home" / ".yamlq" / "gateway.env",
+    )
 
 
 class TestLoadGatewayEnv:
@@ -72,6 +83,41 @@ class TestFindExistingGateway:
         )
         result = _find_existing_gateway()
         assert result == {"url": "http://127.0.0.1:6666", "auth": "env_token"}
+
+
+class TestHomeEnvFileDiscovery:
+    """The user-wide ~/.yamlq/gateway.env written by `yamlq serve`."""
+
+    def test_home_env_file_discovered_when_no_cwd_file(self, monkeypatch, tmp_path):
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.delenv("YAMLQ_GATEWAY_URL", raising=False)
+        monkeypatch.delenv("YAMLQ_GATEWAY_AUTH", raising=False)
+        home_file = gateway_module.HOME_GATEWAY_ENV_FILE
+        home_file.parent.mkdir(parents=True, exist_ok=True)
+        home_file.write_text("YAMLQ_GATEWAY_URL=http://127.0.0.1:4444\nYAMLQ_GATEWAY_DAEMON=1\n")
+        result = _find_existing_gateway()
+        assert result == {"url": "http://127.0.0.1:4444", "auth": ""}
+
+    def test_cwd_file_takes_precedence_over_home(self, monkeypatch, tmp_path):
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.delenv("YAMLQ_GATEWAY_URL", raising=False)
+        home_file = gateway_module.HOME_GATEWAY_ENV_FILE
+        home_file.parent.mkdir(parents=True, exist_ok=True)
+        home_file.write_text("YAMLQ_GATEWAY_URL=http://127.0.0.1:4444\n")
+        (tmp_path / ".yamlq-gateway.env").write_text("YAMLQ_GATEWAY_URL=http://127.0.0.1:5555\n")
+        result = _find_existing_gateway()
+        assert result == {"url": "http://127.0.0.1:5555", "auth": ""}
+
+    def test_returns_empty_when_neither_exists(self, monkeypatch, tmp_path):
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.delenv("YAMLQ_GATEWAY_URL", raising=False)
+        monkeypatch.setattr(
+            gateway_module,
+            "HOME_GATEWAY_ENV_FILE",
+            tmp_path / "missing" / "gateway.env",
+        )
+        assert _load_gateway_env() == {}
+        assert _find_existing_gateway() is None
 
 
 class TestGatewayStart:
@@ -201,3 +247,84 @@ class TestDaemonMode:
             assert cmd[1] == "--mode=cli"
             assert "serve" not in " ".join(cmd)
             assert gw._owned is True
+
+
+class TestIsOwned:
+    def test_owned_by_default(self):
+        assert Gateway().is_owned() is True
+
+    def test_not_owned_after_attach(self):
+        gw = Gateway()
+        with (
+            mock.patch("yamlq.gateway._find_existing_gateway") as mock_find,
+            mock.patch.object(gw._session, "get") as mock_get,
+        ):
+            mock_find.return_value = {"url": "http://127.0.0.1:5555", "auth": ""}
+            mock_response = mock.Mock()
+            mock_response.raise_for_status.return_value = None
+            mock_get.return_value = mock_response
+            gw.start()
+            assert gw.is_owned() is False
+
+
+class TestGatewayServe:
+    def test_serve_composes_serve_command(self):
+        gw = Gateway(auth_token="tok")
+        with (
+            mock.patch("yamlq.gateway._find_binary") as mock_binary,
+            mock.patch("yamlq.gateway.subprocess.Popen") as mock_popen,
+        ):
+            mock_binary.return_value = "/fake/db-gateway"
+            proc = mock.MagicMock()
+            proc.wait.return_value = 0
+            proc.returncode = 0
+            mock_popen.return_value = proc
+
+            rc = gw.serve(port=8080, idle_timeout=300)
+
+            cmd = mock_popen.call_args[0][0]
+            assert cmd == [
+                "/fake/db-gateway",
+                "serve",
+                "--port=8080",
+                "--conn-idle-timeout=300",
+                "--auth-token=tok",
+            ]
+            # foreground process inherits stdio: no capture kwargs
+            assert mock_popen.call_args[1].get("stdout") is None
+            assert rc == 0
+            proc.wait.assert_called_once_with()
+
+    def test_serve_omits_disabled_flags(self):
+        gw = Gateway()
+        with (
+            mock.patch("yamlq.gateway._find_binary") as mock_binary,
+            mock.patch("yamlq.gateway.subprocess.Popen") as mock_popen,
+        ):
+            mock_binary.return_value = "/fake/db-gateway"
+            proc = mock.MagicMock()
+            proc.wait.return_value = 0
+            proc.returncode = 0
+            mock_popen.return_value = proc
+
+            gw.serve(idle_timeout=0)
+
+            cmd = mock_popen.call_args[0][0]
+            assert cmd == ["/fake/db-gateway", "serve"]
+
+    def test_serve_handles_keyboard_interrupt(self):
+        gw = Gateway()
+        with (
+            mock.patch("yamlq.gateway._find_binary") as mock_binary,
+            mock.patch("yamlq.gateway.subprocess.Popen") as mock_popen,
+        ):
+            mock_binary.return_value = "/fake/db-gateway"
+            proc = mock.MagicMock()
+            proc.wait.side_effect = [KeyboardInterrupt(), 0]
+            proc.returncode = 0
+            mock_popen.return_value = proc
+
+            rc = gw.serve()
+
+            assert proc.wait.call_args_list[1] == mock.call(timeout=5)
+            assert rc == 0

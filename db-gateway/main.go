@@ -27,7 +27,7 @@ var (
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "serve" {
 		if serveEntry == nil {
-			fmt.Println("serve subcommand not available (build with -tags all)")
+			fmt.Println("serve subcommand not available (binary is outdated, rebuild it)")
 			os.Exit(1)
 		}
 		serveEntry()
@@ -81,6 +81,7 @@ func run(mgr *conn.Manager, srv *server.Server, port int, authToken string, writ
 	}()
 	srv.SetShutdownFunc(func() {
 		cleanupEnvFile()
+		mgr.StopReaper()
 		mgr.CloseAll()
 		httpServer.Shutdown(context.Background())
 		os.Exit(0)
@@ -89,6 +90,7 @@ func run(mgr *conn.Manager, srv *server.Server, port int, authToken string, writ
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	<-sigCh
 	cleanupEnvFile()
+	mgr.StopReaper()
 	mgr.CloseAll()
 	httpServer.Shutdown(context.Background())
 }
@@ -100,12 +102,24 @@ func resolveMode(mode string, daemon bool) string {
 	return mode
 }
 
-func writeEnvFile(port int, authToken string, daemon bool) {
-	cwd, err := os.Getwd()
+// envFilesWritten records discovery files this process created so shutdown
+// only removes those — a short-lived CLI-spawned gateway must never delete
+// the discovery file of a resident daemon running in another process.
+var envFilesWritten []string
+
+// globalEnvDir holds the user-wide discovery directory. A var so tests can
+// redirect it away from the real home directory.
+var globalEnvDir = defaultGlobalEnvDir
+
+func defaultGlobalEnvDir() string {
+	home, err := os.UserHomeDir()
 	if err != nil {
-		return
+		return ""
 	}
-	path := filepath.Join(cwd, ".yamlq-gateway.env")
+	return filepath.Join(home, ".yamlq")
+}
+
+func writeEnvFile(port int, authToken string, daemon bool) {
 	lines := []string{
 		fmt.Sprintf("YAMLQ_GATEWAY_URL=http://127.0.0.1:%d", port),
 	}
@@ -115,14 +129,28 @@ func writeEnvFile(port int, authToken string, daemon bool) {
 	if daemon {
 		lines = append(lines, "YAMLQ_GATEWAY_DAEMON=1")
 	}
-	os.WriteFile(path, []byte(strings.Join(lines, "\n")+"\n"), 0644)
+	content := strings.Join(lines, "\n") + "\n"
+
+	if cwd, err := os.Getwd(); err == nil {
+		path := filepath.Join(cwd, ".yamlq-gateway.env")
+		if os.WriteFile(path, []byte(content), 0644) == nil {
+			envFilesWritten = append(envFilesWritten, path)
+		}
+	}
+
+	if dir := globalEnvDir(); dir != "" {
+		if os.MkdirAll(dir, 0755) == nil {
+			path := filepath.Join(dir, "gateway.env")
+			if os.WriteFile(path, []byte(content), 0644) == nil {
+				envFilesWritten = append(envFilesWritten, path)
+			}
+		}
+	}
 }
 
 func cleanupEnvFile() {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return
+	for _, path := range envFilesWritten {
+		os.Remove(path)
 	}
-	path := filepath.Join(cwd, ".yamlq-gateway.env")
-	os.Remove(path)
+	envFilesWritten = nil
 }

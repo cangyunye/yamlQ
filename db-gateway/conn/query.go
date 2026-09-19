@@ -26,7 +26,9 @@ func (m *Manager) executeOne(mc *ManagedConn, task *QueryTask) *QueryResult {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
+	m.mu.Lock()
 	mc.LastActive = time.Now()
+	m.mu.Unlock()
 	start := time.Now()
 
 	finalSQL := dialect.WrapPagination(mc.Driver, task.SQL, task.Page, task.PageSize)
