@@ -42,3 +42,6 @@ Desktop.ini
 
 # Agent scratch files
 .superpowers/
+
+# Local real-DB test views (contain credentials)
+testdata/local_*.yaml

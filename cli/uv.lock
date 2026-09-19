@@ -354,7 +354,7 @@ wheels = [
 ]
 
 [[package]]
-name = "yaml-view"
+name = "yamlq"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
