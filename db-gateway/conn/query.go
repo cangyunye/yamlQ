@@ -33,6 +33,9 @@ func (m *Manager) executeOne(mc *ManagedConn, task *QueryTask) *QueryResult {
 	if driver.OracleBinds(mc.Driver, mc.DSN) && len(task.Params) > 0 {
 		finalSQL = dialect.RewritePositional(finalSQL, len(task.Params))
 	}
+	if dialect.UsesNumberPlaceholders(mc.Driver) && len(task.Params) > 0 {
+		finalSQL = dialect.NumberPlaceholders(finalSQL)
+	}
 	rows, err := mc.DB.QueryContext(ctx, finalSQL, task.Params...)
 	if err != nil {
 		return &QueryResult{
