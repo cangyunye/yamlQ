@@ -107,7 +107,16 @@ user_list:
         min_width: 8             # 最小列宽
       - field: status
         header: "状态"
-        converter: status_to_cn  # 枚举英转中
+        # 方式 A：内置 converter（仅 status_to_cn 一组固定映射）
+        # converter: status_to_cn
+        # 方式 B：YAML 自定义枚举映射（任意字段任意取值, 推荐）
+        enum_map:
+          pending: 待支付
+          paid: 已支付
+          shipped: 已发货
+          completed: 已完成
+          cancelled: 已取消
+          refunded: 已退款
         max_width: 10            # 最大列宽（超出折叠/截断）
       - field: created_at
         header: "创建时间"
@@ -157,7 +166,35 @@ oracle_report:
 | `forest` | 白字深绿底 | 绿色 | 有 |
 | `mono` | 白色加粗 | 白色 | 无 |
 
+### 列级枚举翻译 `enum_map`
+
+任何字段都可以在列配置里声明一张"原值 → 显示文本"的 YAML 映射（自定义枚举列表）:
+
+```yaml
+view:
+  columns:
+    - field: priority
+      header: 优先级
+      enum_map:
+        HIGH: 高
+        MEDIUM: 中
+        LOW: 低
+    - field: active          # 数值原值也可映射, key 用字符串即可
+      header: 上架
+      enum_map:
+        "0": 停售
+        "1": 在售
+```
+
+规则:
+
+- 查询结果中的原值（字符串化后）命中 key 则显示映射文本, 未命中则原样显示, 永不丢数据;
+- 数值原值 `1` / `1.0` / `"1"` 归一到同一 key, 因此枚举 key 一律按字符串写即可（建议加引号）;
+- 同一列同时声明 `enum_map` 与 `converter` 时, `enum_map` 优先;
+- Oracle/MySQL/PG 返回的 NUMBER 都是字符串/数字原值, 无需转换器配合。
+
 ### 内置 Converter
+
 
 | 名称 | 功能 | 示例 |
 |---|---|---|
@@ -183,6 +220,7 @@ oracle_report:
 yamlq/
 ├── db-gateway/       # Go HTTP 数据库网关
 ├── cli/              # Python CLI + TUI
+├── oracle/           # Oracle 种子 SQL (演示表 + e2e_users)
 ├── testdata/         # E2E 测试 YAML
 ├── docs/             # 架构设计、ADR、测试计划
 └── Makefile

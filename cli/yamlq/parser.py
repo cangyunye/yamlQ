@@ -17,6 +17,7 @@ class ColumnConfig:
     style: str = ""
     overflow: str = "ellipsis"
     converter: str = ""
+    enum_map: dict[str, str] = field(default_factory=dict)
     width: int | None = None
     min_width: int | None = None
     max_width: int | None = None
@@ -65,6 +66,16 @@ class ConfigError(Exception):
     pass
 
 
+def _parse_enum_map(key: str, col_field: str, raw: dict) -> dict[str, str]:
+    value = raw.get("enum_map") or {}
+    if not isinstance(value, dict):
+        raise ConfigError(
+            f'view "{key}": column "{col_field}" enum_map must be a mapping '
+            f'(raw value -> display text), got {type(value).__name__}'
+        )
+    return {str(k): ("" if v is None else v) for k, v in value.items()}
+
+
 def _parse_view(key: str, raw: dict) -> ViewConfig:
     if not isinstance(raw, dict):
         raise ConfigError(f'view "{key}": expected mapping, got {type(raw).__name__}')
@@ -74,21 +85,24 @@ def _parse_view(key: str, raw: dict) -> ViewConfig:
             raise ConfigError(f'view "{key}": missing required field: {required}')
 
     view_section = raw.get("view", {}) or {}
-    columns = [
-        ColumnConfig(
-            field=c.get("field", ""),
-            header=c.get("header", ""),
-            align=c.get("align", "left"),
-            style=c.get("style", ""),
-            overflow=c.get("overflow", "ellipsis"),
-            converter=c.get("converter", ""),
-            width=c.get("width"),
-            min_width=c.get("min_width"),
-            max_width=c.get("max_width"),
+    columns = []
+    for c in (view_section.get("columns", []) or []):
+        if not isinstance(c, dict) or not c.get("field"):
+            continue
+        columns.append(
+            ColumnConfig(
+                field=c.get("field", ""),
+                header=c.get("header", ""),
+                align=c.get("align", "left"),
+                style=c.get("style", ""),
+                overflow=c.get("overflow", "ellipsis"),
+                converter=c.get("converter", ""),
+                enum_map=_parse_enum_map(key, c.get("field", ""), c),
+                width=c.get("width"),
+                min_width=c.get("min_width"),
+                max_width=c.get("max_width"),
+            )
         )
-        for c in (view_section.get("columns", []) or [])
-        if c.get("field")
-    ]
 
     params = [
         ParamConfig(
@@ -97,7 +111,7 @@ def _parse_view(key: str, raw: dict) -> ViewConfig:
             default=p.get("default"),
         )
         for p in (raw.get("params", []) or [])
-        if p.get("name")
+        if isinstance(p, dict) and p.get("name")
     ]
 
     return ViewConfig(

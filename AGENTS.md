@@ -30,6 +30,7 @@ make clean            # rm binary + __pycache__
 - **Architecture**: Python parses YAML, spawns Go gateway on `127.0.0.1:0` (random port), Go handles DB. Port discovered via Go stdout `"listening on port N"`.
 - **Resident gateway**: `yamlq serve` runs the gateway as a daemon, writes `~/.yamlq/gateway.env` + cwd `.yamlq-gateway.env`; later `yamlq run` auto-attaches (env var `YAMLQ_GATEWAY_URL` > cwd file > home file, verified via `/ping`). Attached runs never close pools — `/connect` is idempotent per `driver+DSN` (Manager.keys), and a reaper (serve mode, `--conn-idle-timeout`, default 600s) closes idle pools and probes liveness every 30s. CLI retries once on `CONNECTION_LOST`/`CONNECTION_NOT_FOUND`.
 - **Timeout model**: `--timeout` = per-query (Go `context.WithTimeout`), `--session-timeout` = Python `ThreadPoolExecutor` deadline (default 120s).
+- **Oracle value types**: go-ora returns NUMBER/DATE/TIMESTAMP as strings (e.g. `'800'`, `'1980-12-17T00:00:00Z'`); datetime converters parse ISO strings; parameterized queries need `:N` binds — the Go gateway rewrites `?` for `oracle`/`ob-oracle` (`dialect.RewritePositional`).
 - **Error codes** (Go): `QUEUE_FULL` → 503, `QUERY_TIMEOUT` → partial + 200, `CONNECTION_LOST` / `DB_ERROR` → 200 with error detail.
-- **Converters** are Python-only (4 built-in: `datetime_to_iso`, `datetime_to_cn`, `status_to_cn`, `money_format`).
+- **Converters** are Python-only (4 built-in: `datetime_to_iso`, `datetime_to_cn`, `status_to_cn`, `money_format`) + per-column YAML `enum_map` (raw → display text; wins over named converter; applied via `converters.format_cell` in renderer and TUI).
 - **No CI** configured.

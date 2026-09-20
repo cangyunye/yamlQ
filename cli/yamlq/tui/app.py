@@ -11,7 +11,7 @@ from textual.reactive import reactive
 from textual.widget import Widget
 from textual.widgets import DataTable, Footer, Header, Input, LoadingIndicator, Static, TabbedContent, TabPane
 
-from yamlq.converters import apply_converter
+from yamlq.converters import format_cell
 from yamlq.gateway import Gateway
 from yamlq.parser import ViewConfig, render_sql
 
@@ -128,9 +128,10 @@ class ViewPane(Widget):
             for i, val in enumerate(row):
                 col_name = r.columns[i] if i < len(r.columns) else ""
                 cfg = col_cfgs.get(col_name)
-                if cfg and cfg.converter:
-                    val = apply_converter(cfg.converter, val)
-                cells.append(str(val) if val is not None else "")
+                if cfg:
+                    cells.append(format_cell(val, cfg.converter, cfg.enum_map))
+                else:
+                    cells.append(str(val) if val is not None else "")
             self._table.add_row(*cells)
 
         total = len(r.rows)

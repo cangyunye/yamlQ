@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from urllib.parse import urlsplit
+
 from rich.console import Console
 from rich.table import Table
 
-from yamlq.converters import apply_converter
+from yamlq.converters import format_cell
 from yamlq.parser import ViewConfig
 
 console = Console()
@@ -42,6 +44,20 @@ THEMES: dict[str, dict] = {
 }
 
 
+def _dsn_label(dsn: str) -> str:
+    """Short, credential-free db marker for the title: mysql@host/db, oracle@…/XEPDB1."""
+    dsn = dsn.split("?")[0]
+    if dsn.startswith("postgres://") or dsn.startswith("oracle://"):
+        parts = urlsplit(dsn)
+        host = parts.hostname or ""
+        port = f":{parts.port}" if parts.port else ""
+        db = parts.path.strip("/")
+        return f"{host}{port}/{db}".rstrip("/")
+    # native DSNs: user:pass@tcp(host:3306)/db / user:pass@host:3306/db
+    after_at = dsn.rsplit("@", 1)[-1] if "@" in dsn else dsn
+    return after_at
+
+
 def render_table(view: ViewConfig, result: dict) -> None:
     if result.get("error"):
         err = result["error"]
@@ -59,7 +75,7 @@ def render_table(view: ViewConfig, result: dict) -> None:
     theme = THEMES.get(view.theme, THEMES["default"])
 
     table = Table(
-        title=f"{view.view_name}  @{view.db_type}+{view.dsn}",
+        title=f"{view.view_name}  @{view.db_type}+{_dsn_label(view.dsn)}",
         title_justify="left",
         show_lines=False,
         header_style=theme["header_style"],
@@ -100,9 +116,10 @@ def render_table(view: ViewConfig, result: dict) -> None:
         for i, val in enumerate(row):
             col_name = columns[i] if i < len(columns) else ""
             cfg = cfg_for(col_name)
-            if cfg and cfg.converter:
-                val = apply_converter(cfg.converter, val)
-            cells.append(str(val) if val is not None else "")
+            if cfg:
+                cells.append(format_cell(val, cfg.converter, cfg.enum_map))
+            else:
+                cells.append(str(val) if val is not None else "")
         table.add_row(*cells)
 
     console.print(table)

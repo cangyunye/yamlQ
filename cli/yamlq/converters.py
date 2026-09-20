@@ -86,3 +86,40 @@ def apply_converter(name: str, value: Any) -> str:
         return fn(value)
     except Exception:
         return str(value) if value is not None else ""
+
+
+def _enum_key(value: Any) -> str:
+    """Canonical string key for lookup: 1 / 1.0 / '1' all map to '1'."""
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "1" if value else "0"
+    if isinstance(value, (int, float, Decimal)):
+        num = Decimal(str(value))
+        if num == num.to_integral_value():
+            return str(int(num))
+        return str(num)
+    return str(value)
+
+
+def apply_enum_map(enum_map: dict[str, str], value: Any) -> str:
+    """Translate a raw DB value through a YAML-declared mapping.
+
+    Unmapped values fall back to their raw string form so nothing is hidden.
+    """
+    if value is None:
+        return ""
+    key = _enum_key(value)
+    if key in enum_map:
+        return str(enum_map[key])
+    return str(value) if value is not None else ""
+
+
+def format_cell(value: Any, converter: str = "", enum_map: dict | None = None) -> str:
+    """Render one cell: YAML enum_map first (wins over named converter), else
+    the named converter, else the raw value."""
+    if enum_map:
+        return apply_enum_map(enum_map, value)
+    if converter:
+        return apply_converter(converter, value)
+    return str(value) if value is not None else ""

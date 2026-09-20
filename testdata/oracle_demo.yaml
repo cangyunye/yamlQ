@@ -1,0 +1,285 @@
+# yamlq Oracle 演示配置 —— 覆盖:
+#   * 多表 (dept/emp/t_product/t_order/t_task) 多视图并行展示
+#   * 终端宽度: width/max_width + overflow: fold (长文本折行不截断)
+#   * 主题: default / ocean / sunset / forest / mono
+#   * 枚举翻译: 每列 YAML enum_map (原值 -> 显示文本), 支持数值原值(active 0/1)
+#   * converter: money_format / datetime_to_iso / datetime_to_cn
+#   * 参数: {{keyword}} 占位 + default / --param 覆盖
+#
+# 依赖 oracle/seed_scott.sql (SCOTT schema), 需先执行种子脚本。
+
+emp_list:
+  view_name: "员工列表"
+  description: "EMP 关联 DEPT, job/dname 走 enum_map"
+  db_type: "oracle"
+  dsn: "oracle://scott:tiger@127.0.0.1:1521/XEPDB1"
+  sql: |
+    SELECT e.empno, e.ename, e.job, e.sal, d.dname, e.hiredate
+    FROM emp e JOIN dept d ON e.deptno = d.deptno
+    ORDER BY e.deptno, e.empno
+  params: []
+  view:
+    enable: true
+    theme: "ocean"
+    columns:
+      - field: EMPNO
+        header: "员工号"
+        align: "center"
+        width: 6
+      - field: ENAME
+        header: "姓名"
+      - field: JOB
+        header: "职位"
+        enum_map:
+          CLERK: 文员
+          ANALYST: 分析师
+          MANAGER: 经理
+          SALESMAN: 销售
+          PRESIDENT: 总裁
+      - field: SAL
+        header: "薪资"
+        align: "right"
+        converter: money_format
+      - field: DNAME
+        header: "部门"
+        enum_map:
+          ACCOUNTING: 财务部
+          RESEARCH: 研发部
+          SALES: 销售部
+          OPERATIONS: 运营部
+      - field: HIREDATE
+        header: "入职日期"
+        converter: datetime_to_cn
+
+dept_summary:
+  view_name: "部门汇总"
+  description: "聚合查询 + 金额 converter"
+  db_type: "oracle"
+  dsn: "oracle://scott:tiger@127.0.0.1:1521/XEPDB1"
+  sql: |
+    SELECT d.dname,
+           COUNT(e.empno) AS cnt,
+           NVL(SUM(e.sal), 0) AS total_sal
+    FROM dept d
+    LEFT JOIN emp e ON e.deptno = d.deptno
+    GROUP BY d.dname
+    ORDER BY total_sal DESC
+  params: []
+  view:
+    enable: true
+    theme: "forest"
+    columns:
+      - field: DNAME
+        header: "部门"
+        enum_map:
+          ACCOUNTING: 财务部
+          RESEARCH: 研发部
+          SALES: 销售部
+          OPERATIONS: 运营部
+      - field: CNT
+        header: "人数"
+        align: "right"
+      - field: TOTAL_SAL
+        header: "薪资总额"
+        align: "right"
+        converter: money_format
+
+product_list:
+  view_name: "商品清单"
+  description: "category/active 枚举 + 超宽 remark 折行(宽度演示)"
+  db_type: "oracle"
+  dsn: "oracle://scott:tiger@127.0.0.1:1521/XEPDB1"
+  sql: |
+    SELECT product_id, name, category, price, active, remark
+    FROM t_product
+    ORDER BY product_id
+  params: []
+  view:
+    enable: true
+    theme: "sunset"
+    columns:
+      - field: PRODUCT_ID
+        header: "编号"
+        align: "center"
+        width: 5
+      - field: NAME
+        header: "名称"
+        max_width: 14
+        overflow: "fold"
+      - field: CATEGORY
+        header: "品类"
+        max_width: 10
+        overflow: "fold"
+        enum_map:
+          PC: 台式整机
+          PERI: 外设
+          AUDIO: 音频
+          LIFE: 生活电器
+      - field: PRICE
+        header: "价格"
+        align: "right"
+        width: 12
+        converter: money_format
+      - field: ACTIVE
+        header: "上架"
+        align: "center"
+        enum_map:
+          "0": 停售
+          "1": 在售
+      - field: REMARK
+        header: "备注"
+        max_width: 24
+        overflow: "fold"
+
+order_list:
+  view_name: "订单列表"
+  description: "status 枚举 + 关联商品名 + 金额/时间 converter"
+  db_type: "oracle"
+  dsn: "oracle://scott:tiger@127.0.0.1:1521/XEPDB1"
+  sql: |
+    SELECT o.order_no, o.customer, p.name AS product_name,
+           o.qty, o.amount, o.status, o.created_at
+    FROM t_order o JOIN t_product p ON p.product_id = o.product_id
+    ORDER BY o.created_at
+  params: []
+  view:
+    enable: true
+    theme: "default"
+    columns:
+      - field: ORDER_NO
+        header: "订单号"
+        align: "center"
+        width: 10
+      - field: CUSTOMER
+        header: "客户"
+      - field: PRODUCT_NAME
+        header: "商品"
+        max_width: 16
+        overflow: "fold"
+      - field: QTY
+        header: "数量"
+        align: "right"
+      - field: AMOUNT
+        header: "金额"
+        align: "right"
+        converter: money_format
+      - field: STATUS
+        header: "状态"
+        enum_map:
+          PENDING: 待支付
+          PAID: 已支付
+          SHIPPED: 已发货
+          COMPLETED: 已完成
+          CANCELLED: 已取消
+      - field: CREATED_AT
+        header: "下单时间"
+        converter: datetime_to_cn
+        max_width: 18
+        overflow: "fold"
+
+order_summary:
+  view_name: "订单状态汇总"
+  description: "GROUP BY 聚合 + 分组键 status 同样走 enum_map"
+  db_type: "oracle"
+  dsn: "oracle://scott:tiger@127.0.0.1:1521/XEPDB1"
+  sql: |
+    SELECT status, COUNT(*) AS cnt, SUM(amount) AS total
+    FROM t_order
+    GROUP BY status
+    ORDER BY status
+  params: []
+  view:
+    enable: true
+    theme: "ocean"
+    columns:
+      - field: STATUS
+        header: "状态"
+        enum_map:
+          PENDING: 待支付
+          PAID: 已支付
+          SHIPPED: 已发货
+          COMPLETED: 已完成
+          CANCELLED: 已取消
+      - field: CNT
+        header: "单数"
+        align: "right"
+      - field: TOTAL
+        header: "总额"
+        align: "right"
+        converter: money_format
+
+task_board:
+  view_name: "任务看板"
+  description: "单表两个枚举字段(priority/state), 宽标题折行 + mono 主题"
+  db_type: "oracle"
+  dsn: "oracle://scott:tiger@127.0.0.1:1521/XEPDB1"
+  sql: |
+    SELECT task_id, title, owner, priority, state, due
+    FROM t_task
+    ORDER BY due
+  params: []
+  view:
+    enable: true
+    theme: "mono"
+    columns:
+      - field: TASK_ID
+        header: "编号"
+        align: "center"
+        width: 6
+      - field: TITLE
+        header: "任务"
+        min_width: 24
+        max_width: 44
+        overflow: "fold"
+      - field: OWNER
+        header: "负责人"
+      - field: PRIORITY
+        header: "优先级"
+        align: "center"
+        enum_map:
+          HIGH: 高
+          MEDIUM: 中
+          LOW: 低
+      - field: STATE
+        header: "状态"
+        align: "center"
+        enum_map:
+          TODO: 待办
+          DOING: 进行中
+          DONE: 已完成
+          BLOCKED: 已阻塞
+      - field: DUE
+        header: "截止日期"
+        converter: datetime_to_iso
+
+emp_search:
+  view_name: "员工搜索"
+  description: "参数化查询: keyword 默认 K(仅 KING/CLARK), 可用 --param keyword=O 覆盖"
+  db_type: "oracle"
+  dsn: "oracle://scott:tiger@127.0.0.1:1521/XEPDB1"
+  sql: |
+    SELECT empno, ename, job
+    FROM emp
+    WHERE UPPER(ename) LIKE '%' || UPPER({{keyword}}) || '%'
+    ORDER BY empno
+  params:
+    - name: keyword
+      prompt: "搜索关键词"
+      default: "K"
+  view:
+    enable: true
+    theme: "default"
+    columns:
+      - field: EMPNO
+        header: "员工号"
+        align: "center"
+      - field: ENAME
+        header: "姓名"
+      - field: JOB
+        header: "职位"
+        enum_map:
+          CLERK: 文员
+          ANALYST: 分析师
+          MANAGER: 经理
+          SALESMAN: 销售
+          PRESIDENT: 总裁
