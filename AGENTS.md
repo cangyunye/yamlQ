@@ -7,17 +7,18 @@
 
 ## Build & test
 ```bash
-make build            # default: mysql + postgres + opengauss + oracle only
-make build-all        # all drivers (-tags all); serve subcommand is always available
-make test             # test-go + test-python (default build)
-make test-go          # go test ./... -timeout 60s (default build)
-make test-go-all      # go test -tags all ./... -timeout 60s (all drivers)
-make test-python      # .venv/bin/python -m pytest tests/ -v --timeout=120 (from cli/)
-make clean            # rm binary + __pycache__
+task build            # default: mysql + postgres + opengauss + oracle only
+task build-all        # all drivers (-tags all); serve subcommand is always available
+task test             # test-go + test-python (default build)
+task test-go          # go test ./... -timeout 60s (default build)
+task test-go-all      # go test -tags all ./... -timeout 60s (all drivers)
+task test-python      # .venv/bin/python -m pytest tests/ -v --timeout=120 (from cli/)
+task clean            # rm binary + __pycache__
 ```
 
 ## Quirks & gotchas
-- **No lint/typecheck config** — no ruff.toml, no golangci, no pre-commit. Only `make test` verifies.
+- **No lint/typecheck config** — no ruff.toml, no golangci, no pre-commit. Only `task test` verifies.
+- **Task runner** is go-task (`Taskfile.yml`), not Make.
 - **Go 1.25** — uses `http.NewServeMux` method-pattern routing (`"POST /connect"`).
 - **Go binary** built at `db-gateway/db-gateway`, gitignored. Must rebuild after Go changes.
 - **Python toolchain** is `uv` (not pip/poetry). `.venv/` lives in `cli/`.

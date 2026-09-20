@@ -5,7 +5,7 @@ import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from yamlq import __version__, __commit__
+from yamlq import __version__, __commit__, __built_at__
 from yamlq.gateway import Gateway, GatewayError
 from yamlq.parser import ConfigError, ViewConfig, check_views, load_views, render_sql
 from yamlq.renderer import console, render_table
@@ -266,7 +266,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if getattr(args, "version", False):
-        print(f"yamlq {__version__} (commit {__commit__})")
+        print(f"yamlq {__version__} (commit {__commit__}, built {__built_at__})")
         sys.exit(0)
 
     if args.command == "check":

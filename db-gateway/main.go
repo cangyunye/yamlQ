@@ -21,6 +21,7 @@ import (
 var (
 	version    = "dev"
 	commit     = "none"
+	buildTime  = "unknown"
 	serveEntry func()
 )
 
@@ -42,7 +43,7 @@ func main() {
 	flag.Parse()
 
 	if *showVersion {
-		fmt.Printf("yamlq/db-gateway %s (commit %s)\n", version, commit)
+		fmt.Printf("yamlq/db-gateway %s (commit %s, built %s)\n", version, commit, buildTime)
 		os.Exit(0)
 	}
 

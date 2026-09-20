@@ -7,7 +7,7 @@
 ### 构建
 
 ```bash
-make build          # 编译 Go 网关 + 安装 Python CLI
+task build          # 编译 Go 网关 + 安装 Python CLI
 ```
 
 ### 使用
@@ -36,7 +36,7 @@ yamlq check -c config.yaml
 
 ```bash
 yamlq --version
-# yamlq 0.1.0 (commit abc1234)
+# yamlq v0.2.0-9-ge7679a9-dirty (commit e7679a9, built 2026-09-20T23:25:08+0800)
 ```
 
 ## 常驻网关（serve）
@@ -223,16 +223,16 @@ yamlq/
 ├── oracle/           # Oracle 种子 SQL (演示表 + e2e_users)
 ├── testdata/         # E2E 测试 YAML
 ├── docs/             # 架构设计、ADR、测试计划
-└── Makefile
+└── Taskfile.yml
 ```
 
 ## 开发
 
 ```bash
-make test             # 运行全部测试（Go + Python E2E）
-make test-go          # 仅 Go 测试
-make test-python      # 仅 Python E2E 测试
-make build            # 编译
+task test             # 运行全部测试（Go + Python E2E）
+task test-go          # 仅 Go 测试
+task test-python      # 仅 Python E2E 测试
+task build            # 编译
 ```
 
 详细架构设计见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。

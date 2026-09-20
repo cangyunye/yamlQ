@@ -43,7 +43,7 @@
 默认编译仅包含 `mysql`、`postgres`、`opengauss`、`oracle` 四种基础驱动。完整驱动（OB、GoldenDB、SQLite、ClickHouse、SQL Server）及 `serve` 子命令需使用 `-tags all` 编译：
 
 ```bash
-make build-all              # 完整构建
+task build-all              # 完整构建
 cd db-gateway && go build -tags all -o db-gateway .   # 或直接 go build
 ```
 

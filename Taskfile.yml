@@ -1,0 +1,72 @@
+version: '3'
+
+vars:
+  VERSION:
+    sh: git describe --tags --always --dirty 2>/dev/null || echo "0.1.0"
+  COMMIT:
+    sh: git rev-parse --short HEAD 2>/dev/null || echo "none"
+  BUILD_TIME:
+    sh: date '+%Y-%m-%dT%H:%M:%S%z'
+
+tasks:
+  build:
+    desc: Build Go gateway (default drivers) + install Python CLI
+    cmds:
+      - task: build-go
+      - task: install-python
+
+  build-all:
+    desc: Build Go gateway (all drivers) + install Python CLI
+    cmds:
+      - task: build-go-all
+      - task: install-python
+
+  build-go:
+    desc: Build Go gateway (mysql/postgres/opengauss/oracle only)
+    dir: db-gateway
+    cmds:
+      - CGO_ENABLED=0 go build -ldflags "-X main.version={{.VERSION}} -X main.commit={{.COMMIT}} -X main.buildTime={{.BUILD_TIME}}" -o db-gateway .
+
+  build-go-all:
+    desc: Build Go gateway with all drivers (-tags all)
+    dir: db-gateway
+    cmds:
+      - CGO_ENABLED=0 go build -tags all -ldflags "-X main.version={{.VERSION}} -X main.commit={{.COMMIT}} -X main.buildTime={{.BUILD_TIME}}" -o db-gateway .
+
+  install-python:
+    desc: Write _commit.py and install CLI editable (uv)
+    dir: cli
+    cmds:
+      - printf '__build_version__ = "%s"\n__commit__ = "%s"\n__built_at__ = "%s"\n' "{{.VERSION}}" "{{.COMMIT}}" "{{.BUILD_TIME}}" > yamlq/_commit.py
+      - uv pip install -e ".[dev,tui]"
+
+  test:
+    desc: Run Go + Python E2E tests
+    cmds:
+      - task: test-go
+      - task: test-python
+
+  test-go:
+    desc: Go tests (default build)
+    dir: db-gateway
+    cmds:
+      - go test ./... -timeout 60s
+
+  test-go-all:
+    desc: Go tests (all drivers)
+    dir: db-gateway
+    cmds:
+      - go test -tags all ./... -timeout 60s
+
+  test-python:
+    desc: Python E2E tests (from cli/)
+    dir: cli
+    cmds:
+      - .venv/bin/python -m pytest tests/ -v --timeout=120
+
+  clean:
+    desc: Remove built binary, _commit.py and __pycache__
+    cmds:
+      - rm -f db-gateway/db-gateway
+      - rm -f cli/yamlq/_commit.py
+      - find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
